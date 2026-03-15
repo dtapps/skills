@@ -6,8 +6,14 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
+	"strings"
 	"time"
+)
+
+const (
+	Version = "1.0.1"
 )
 
 type Message struct {
@@ -41,58 +47,27 @@ type RequestBody struct {
 	SearchFilter       SearchFilter     `json:"search_filter"`        // 根据SearchFilter下的子条件做检索过滤，使用方式参考SearchFilter表详情。
 }
 
-type Reference struct {
-	Icon      string `json:"icon,omitempty"`    // 网站图标地址。
-	ID        int64  `json:"id"`                // 引用编号1、2、3
-	Title     string `json:"title"`             // 网页标题
-	URL       string `json:"url"`               // 网页地址
-	WebAnchor string `json:"web_anchor"`        // 网站锚文本或网站标题
-	Website   string `json:"website,omitempty"` // 站点名称。
-	Snippet   string `json:"snippet,omitempty"` // 搜索接口原文片段（非网页原文）
-	Content   string `json:"content,omitempty"` // 网站全文或片段，仅当用户开白且enable_full_content设为true时，显示全文
-	Date      string `json:"date,omitempty"`    // 网页日期
-	Type      string `json:"type,omitempty"`    // 检索资源类型：web:网页 image:图像内容 video:视频内容
-	Image     struct {
-		URL    string `json:"url,omitempty"`    // 图片链接
-		Height string `json:"height,omitempty"` // 图片高度
-		Width  string `json:"width,omitempty"`  // 图片宽度
-	} `json:"image,omitempty"` // 图片详情
-	Video struct {
-		URL      string `json:"url,omitempty"`       // 视频链接
-		Height   string `json:"height,omitempty"`    // 视频高度
-		Width    string `json:"width,omitempty"`     // 视频宽度
-		Size     string `json:"size,omitempty"`      // 视频大小，单位Bytes
-		Duration string `json:"duration,omitempty"`  // 视频长度，单位秒
-		HoverPic string `json:"hover_pic,omitempty"` // 视频封面图
-	} `json:"video,omitempty"` // 视频详情
-	IsAladdin     bool   `json:"is_aladdin,omitempty"` // 是否为阿拉丁内容。
-	Aladdin       string `json:"aladdin,omitempty"`    // 阿拉丁详细内容，参考文档。
-	WebExtensions struct {
-		Images []struct {
-			URL    string `json:"url,omitempty"`    // 图片链接
-			Height string `json:"height,omitempty"` // 图片高度
-			Width  string `json:"width,omitempty"`  // 图片宽度
-		} `json:"images,omitempty"` // 网页相关图片
-	} `json:"web_extensions,omitempty"` // 网页相关图片
+// 响应体
+type Response struct {
+	RequestID  string          `json:"request_id"`           // 请求ID。
+	Code       string          `json:"code,omitempty"`       // 错误码，当发生异常时返回。
+	Message    string          `json:"message,omitempty"`    // 错误消息，当发生异常时返回。
+	References json.RawMessage `json:"references,omitempty"` // 模型回答详情列表，参考Reference对象表详情。
 }
 
-type SearchResult struct {
-	RequestID  string      `json:"request_id"`           // 请求ID。
-	Code       string      `json:"code,omitempty"`       // 错误码，当发生异常时返回。
-	Message    string      `json:"message,omitempty"`    // 错误消息，当发生异常时返回。
-	References []Reference `json:"references,omitempty"` // 模型回答详情列表，参考Reference对象表详情。
-}
-
-func baiduSearch(apiKey string, requestBody RequestBody) ([]Reference, error) {
+// https://cloud.baidu.com/doc/qianfan-api/s/Wmbq4z7e5
+func baiduSearch(apiKey string, requestBody RequestBody) (*Response, error) {
 	client := &http.Client{}
+
+	// 构建 Body 参数
 	jsonData, err := json.Marshal(requestBody)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request body: %w", err)
+		return nil, fmt.Errorf("无法序列化请求体: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", "https://qianfan.baidubce.com/v2/ai_search/web_search", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest(http.MethodPost, "https://qianfan.baidubce.com/v2/ai_search/web_search", bytes.NewBuffer(jsonData))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf("无法创建请求: %w", err)
 	}
 
 	req.Header.Set("X-Appbuilder-Authorization", fmt.Sprintf("Bearer %s", apiKey))
@@ -100,36 +75,34 @@ func baiduSearch(apiKey string, requestBody RequestBody) ([]Reference, error) {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to send request: %w", err)
+		return nil, fmt.Errorf("无法发送请求: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API request failed with status: %d", resp.StatusCode)
+		return nil, fmt.Errorf("API 请求失败，状态码: %d", resp.StatusCode)
 	}
 
-	var results SearchResult
+	var results *Response
 	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+		return nil, fmt.Errorf("无法解析响应体: %w", err)
 	}
 
-	if results.Code != "" {
-		return nil, fmt.Errorf("API error: %s", results.Message)
-	}
-
-	return results.References, nil
+	return results, nil
 }
 
 func parseRequestBody(query string) (RequestBody, error) {
-	var parseData map[string]interface{}
+	var parseData map[string]any
 	if err := json.Unmarshal([]byte(query), &parseData); err != nil {
-		return RequestBody{}, fmt.Errorf("JSON parse error: %w", err)
+		return RequestBody{}, fmt.Errorf("JSON 解析错误: %w", err)
 	}
 
+	// 搜索关键词
 	if _, ok := parseData["query"]; !ok {
-		return RequestBody{}, fmt.Errorf("query must be present in request body")
+		return RequestBody{}, fmt.Errorf("查询关键词 query 必须在请求体中")
 	}
 
+	// 返回结果数量，范围 1-50
 	count := 10
 	if val, ok := parseData["count"].(float64); ok {
 		count = int(val)
@@ -144,6 +117,7 @@ func parseRequestBody(query string) (RequestBody, error) {
 	endDate := currentTime.AddDate(0, 0, 1).Format("2006-01-02")
 	searchFilter := SearchFilter{}
 
+	// 时间范围过滤
 	if freshness, ok := parseData["freshness"].(string); ok {
 		pattern := regexp.MustCompile(`\d{4}-\d{2}-\d{2}to\d{4}-\d{2}-\d{2}`)
 		switch freshness {
@@ -192,43 +166,87 @@ func parseRequestBody(query string) (RequestBody, error) {
 }
 
 func main() {
-	var query string
+	loadEnvFile()
 
-	if len(os.Args) >= 2 {
-		query = os.Args[1]
-	} else {
-		fmt.Print("Enter search query (JSON format): ")
-		var input string
-		if _, err := fmt.Scanln(&input); err != nil {
-			fmt.Printf("Error reading input: %v\n", err)
-			os.Exit(1)
-		}
-		query = input
+	if len(os.Args) < 2 {
+		fmt.Println("Usage: go run main.go '<JSON>'")
+		os.Exit(1)
 	}
+
+	query := os.Args[1]
 
 	requestBody, err := parseRequestBody(query)
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
+		fmt.Printf("错误: %v\n", err)
 		os.Exit(1)
 	}
 
 	apiKey := os.Getenv("BAIDU_API_KEY")
 	if apiKey == "" {
-		fmt.Println("Error: BAIDU_API_KEY must be set in environment")
+		fmt.Println("错误: BAIDU_API_KEY 必须在环境变量中设置")
 		os.Exit(1)
 	}
 
-	results, err := baiduSearch(apiKey, requestBody)
+	response, err := baiduSearch(apiKey, requestBody)
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
+		fmt.Printf("错误: %v\n", err)
 		os.Exit(1)
 	}
 
-	output, err := json.MarshalIndent(results, "", "  ")
+	output, err := json.MarshalIndent(response, "", "  ")
 	if err != nil {
-		fmt.Printf("Error marshaling results: %v\n", err)
+		fmt.Printf("错误: %v\n", err)
 		os.Exit(1)
 	}
 
 	fmt.Println(string(output))
+}
+
+func findEnvFile() string {
+	dir, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+
+	for {
+		envFile := filepath.Join(dir, ".env")
+		if _, err := os.Stat(envFile); err == nil {
+			return envFile
+		}
+
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+
+	return ""
+}
+
+func loadEnvFile() {
+	envFile := findEnvFile()
+	if envFile == "" {
+		return
+	}
+
+	data, err := os.ReadFile(envFile)
+	if err != nil {
+		return
+	}
+
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) == 2 {
+			key := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+			os.Setenv(key, value)
+		}
+	}
 }
