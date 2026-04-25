@@ -5,9 +5,11 @@ FROM golang:1.26.2-trixie
 # 定义版本变量
 # https://github.com/upx/upx/releases
 # https://github.com/golangci/golangci-lint/releases
+# https://github.com/goreleaser/nfpm/releases
 # ==========================================
 ARG UPX_VERSION=5.1.1
 ARG GOLANGCI_LINT_VERSION=2.11.4
+ARG NFPM_VERSION=2.46.3
 
 # 1. 设置 Go 环境变量
 ENV GO111MODULE=on
@@ -68,7 +70,20 @@ RUN ARCH=$(uname -m) && \
     golangci-lint --version
 
 # 6. 安装 nfpm (用于打包 deb/rpm)
-RUN go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest && \
+# https://github.com/goreleaser/nfpm/releases
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "x86_64" ]; then NFPM_ARCH="amd64"; \
+    elif [ "$ARCH" = "aarch64" ]; then NFPM_ARCH="arm64"; \
+    else echo "Unsupported architecture: $ARCH" && exit 1; fi && \
+    \
+    NFPM_URL="https://files.m.daocloud.io/github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_Linux_${NFPM_ARCH}.tar.gz" && \
+    \
+    cd /tmp && \
+    wget -q -O nfpm.tar.gz "${NFPM_URL}" && \
+    tar -xf nfpm.tar.gz && \
+    mv nfpm /usr/local/bin/nfpm && \
+    chmod +x /usr/local/bin/nfpm && \
+    rm -rf nfpm.tar.gz && \
     echo "--- nfpm installed ---" && \
     nfpm --version
 
