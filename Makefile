@@ -183,13 +183,23 @@ build-darwin-arm64:
 # 定义 Lint 过程中需要激活的 Go Build Tags
 LINT_TAGS = goolm,stdjson
 
-check: 
+check:
 	@echo "[Check] 自动语法转换与格式化..."
 	go fix ./...
 	go fmt ./...
 	@echo "[Check] 运行 golangci-lint 深度扫描 (Tags: $(LINT_TAGS))..."
-	@# 检查 golangci-lint 是否安装
-	golangci-lint run ./... \
+	@echo "  -> Linux 平台 (amd64)"
+	GOOS=linux GOARCH=amd64 golangci-lint run ./... \
+		--build-tags $(LINT_TAGS) \
+		--timeout 5m \
+		--fix
+	@echo "  -> macOS 平台 (arm64)"
+	GOOS=darwin GOARCH=arm64 golangci-lint run ./... \
+		--build-tags $(LINT_TAGS) \
+		--timeout 5m \
+		--fix
+	@echo "  -> Windows 平台 (amd64)"
+	GOOS=windows GOARCH=amd64 golangci-lint run ./... \
 		--build-tags $(LINT_TAGS) \
 		--timeout 5m \
 		--fix

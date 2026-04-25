@@ -157,7 +157,9 @@ func (u *Updater) updateWithPackage(targetPath string, installType InstallType) 
 	if err != nil {
 		return fmt.Errorf("下载包失败: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("下载包失败，服务器返回: %d", resp.StatusCode)
