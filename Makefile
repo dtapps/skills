@@ -247,21 +247,32 @@ generate:
 ## 打包 (deb/rpm)
 #####################
 
+# 生成 nfpm 临时配置文件（替换变量）
+define generate_nfpm_config
+	@sed -e 's|$${ARCH}|$(1)|g' -e 's|$${VERSION}|$(VERSION)|g' .nfpm.yaml > .nfpm-$(1).yaml
+endef
+
 # 打包 deb
 .PHONY: package-deb
 package-deb: build-linux-amd64
 	@echo "[打包] 创建 deb 包..."
 	@mkdir -p dist
-	ARCH=amd64 VERSION=$(VERSION) nfpm package -p deb -f .nfpm.yaml -t dist/
-	@echo "✓ deb 包已创建: dist/"
+	$(call generate_nfpm_config,amd64)
+	nfpm package -p deb -f .nfpm-amd64.yaml -t dist/dtskills_amd64.deb
+	@rm -f .nfpm-amd64.yaml
+	@echo "✓ deb 包已创建: dist/dtskills_amd64.deb"
 
 # 打包 rpm
 .PHONY: package-rpm
 package-rpm: build-linux-amd64
 	@echo "[打包] 创建 rpm 包..."
 	@mkdir -p dist
-	ARCH=amd64 VERSION=$(VERSION) nfpm package -p rpm -f .nfpm.yaml -t dist/
-	@echo "✓ rpm 包已创建: dist/"
+	# rpm 使用 x86_64 架构，需要创建符号链接
+	@ln -sf dtskills-linux-amd64 dist/dtskills-linux-x86_64 2>/dev/null || true
+	$(call generate_nfpm_config,x86_64)
+	nfpm package -p rpm -f .nfpm-x86_64.yaml -t dist/dtskills.x86_64.rpm
+	@rm -f .nfpm-x86_64.yaml dist/dtskills-linux-x86_64
+	@echo "✓ rpm 包已创建: dist/dtskills.x86_64.rpm"
 
 # 打包所有 Linux 包
 .PHONY: package-linux-all
