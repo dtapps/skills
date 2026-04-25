@@ -70,9 +70,8 @@ RUN ARCH=$(uname -m) && \
     golangci-lint --version
 
 # 6. 安装 nfpm (用于打包 deb/rpm)
-# https://github.com/goreleaser/nfpm/releases
 RUN ARCH=$(uname -m) && \
-    if [ "$ARCH" = "x86_64" ]; then NFPM_ARCH="amd64"; \
+    if [ "$ARCH" = "x86_64" ]; then NFPM_ARCH="x86_64"; \
     elif [ "$ARCH" = "aarch64" ]; then NFPM_ARCH="arm64"; \
     else echo "Unsupported architecture: $ARCH" && exit 1; fi && \
     \
