@@ -190,15 +190,11 @@ var upgradeCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		p := ui.NewPrinter(cmd.OutOrStdout())
 
-		// 获取更新 URL（可以从配置文件读取，或使用默认值）
-		updateURL, _ := cmd.Flags().GetString("url")
-		if updateURL == "" {
-			// 默认版本检查 URL
-			updateURL = "https://cnb.cool/dtapp/skills/-/releases/latest/download/version.json"
-		}
+		// 获取仓库 URL（可以从配置文件读取，或使用默认值）
+		repoURL, _ := cmd.Flags().GetString("repo")
 
 		// 创建更新器
-		u := updater.New(Version, updateURL)
+		u := updater.New(Version, repoURL)
 
 		p.Title("🔍 检查更新")
 		p.Printf("当前版本: %s\n", Version)
@@ -218,6 +214,7 @@ var upgradeCmd = &cobra.Command{
 		}
 
 		p.Printf("发现新版本: %s\n", latestVersion)
+		p.Printf("下载地址: %s\n", downloadURL)
 		p.Println()
 
 		// 确认是否更新
@@ -243,7 +240,7 @@ var upgradeCmd = &cobra.Command{
 
 func init() {
 	// 为 upgrade 命令添加 flag
-	upgradeCmd.Flags().String("url", "", "版本检查 URL（可选）")
+	upgradeCmd.Flags().String("repo", "", "仓库地址（可选，默认: https://cnb.cool/dtapp/skills）")
 }
 
 // configCmd 配置管理命令

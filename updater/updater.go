@@ -2,11 +2,11 @@ package updater
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"regexp"
 	"runtime"
 	"time"
 
@@ -14,25 +14,24 @@ import (
 	"github.com/minio/selfupdate"
 )
 
-// VersionInfo 版本信息
-type VersionInfo struct {
-	Version string `json:"version"`
-	URL     string `json:"url,omitempty"`
-}
-
 // Updater 更新器
 type Updater struct {
 	currentVersion string
-	updateURL      string
+	repoURL        string
 	httpClient     *http.Client
 }
 
 // New 创建更新器
-// updateURL: 版本检查 URL，返回 JSON 格式 {"version": "x.x.x", "url": "下载链接"}
-func New(currentVersion, updateURL string) *Updater {
+// repoURL: 仓库地址，如 https://cnb.cool/dtapp/skills
+func New(currentVersion, repoURL string) *Updater {
+	if repoURL == "" {
+		// 默认使用 cnb.cool 仓库
+		repoURL = "https://cnb.cool/dtapp/skills"
+	}
+
 	return &Updater{
 		currentVersion: currentVersion,
-		updateURL:      updateURL,
+		repoURL:        repoURL,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -42,60 +41,72 @@ func New(currentVersion, updateURL string) *Updater {
 // Check 检查是否有新版本
 // 返回: 是否有新版本, 最新版本号, 下载URL, 错误
 func (u *Updater) Check() (bool, string, string, error) {
-	if u.updateURL == "" {
-		return false, "", "", fmt.Errorf("更新 URL 未配置")
+	// 从 release 页面获取最新版本
+	latestVersion, err := u.getLatestVersion()
+	if err != nil {
+		return false, "", "", err
 	}
+
+	// 比较版本
+	if latestVersion == u.currentVersion && u.currentVersion != "dev" {
+		return false, latestVersion, "", nil
+	}
+
+	// 构建下载 URL
+	downloadURL := u.buildDownloadURL(latestVersion)
+
+	return true, latestVersion, downloadURL, nil
+}
+
+// getLatestVersion 从 CNB release 页面获取最新版本号
+func (u *Updater) getLatestVersion() (string, error) {
+	releasesURL := u.repoURL + "/-/releases"
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.updateURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, releasesURL, nil)
 	if err != nil {
-		return false, "", "", fmt.Errorf("创建请求失败: %w", err)
+		return "", fmt.Errorf("创建请求失败: %w", err)
 	}
 
 	resp, err := u.httpClient.Do(req)
 	if err != nil {
-		return false, "", "", fmt.Errorf("请求失败: %w", err)
+		return "", fmt.Errorf("无法连接到 CNB: %w", err)
 	}
 	defer func() {
 		_ = resp.Body.Close()
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return false, "", "", fmt.Errorf("服务器返回错误: %d", resp.StatusCode)
+		return "", fmt.Errorf("服务器返回错误: %d", resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return false, "", "", fmt.Errorf("读取响应失败: %w", err)
+		return "", fmt.Errorf("读取响应失败: %w", err)
 	}
 
-	var info VersionInfo
-	if err := json.Unmarshal(body, &info); err != nil {
-		return false, "", "", fmt.Errorf("解析版本信息失败: %w", err)
+	// 匹配 CNB HTML 里的标签路径，例如: /dtapp/skills/-/releases/tag/v1.0.1
+	re := regexp.MustCompile(`releases/tag/(v\d+\.\d+\.\d+)`)
+	match := re.FindStringSubmatch(string(body))
+	if len(match) < 2 {
+		return "", fmt.Errorf("无法从 CNB 页面解析最新版本号，请检查仓库是否公开")
 	}
 
-	if info.Version == "" {
-		return false, "", "", fmt.Errorf("版本信息为空")
-	}
+	return match[1], nil
+}
 
-	// 比较版本
-	if info.Version == u.currentVersion {
-		return false, info.Version, "", nil
-	}
-
-	return true, info.Version, info.URL, nil
+// buildDownloadURL 构建下载 URL
+// 格式: https://cnb.cool/dtapp/skills/-/releases/download/{tag}/{binary-name}-{os}-{arch}
+func (u *Updater) buildDownloadURL(version string) string {
+	fileName := fmt.Sprintf("%s-%s-%s", types.ProjectName, runtime.GOOS, runtime.GOARCH)
+	return fmt.Sprintf("%s/-/releases/download/%s/%s", u.repoURL, version, fileName)
 }
 
 // Update 执行更新
 // binaryURL: 二进制文件下载地址
 func (u *Updater) Update(binaryURL string) error {
-	if binaryURL == "" {
-		// 如果没有提供 URL，构建默认 URL
-		binaryURL = u.buildDefaultURL()
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
@@ -126,13 +137,6 @@ func (u *Updater) Update(binaryURL string) error {
 	}
 
 	return nil
-}
-
-// buildDefaultURL 构建默认下载 URL
-// 格式: https://cnb.cool/dtapp/skills/-/releases/latest/download/{binary-name}-{os}-{arch}
-func (u *Updater) buildDefaultURL() string {
-	baseURL := fmt.Sprintf("https://cnb.cool/dtapp/skills/-/releases/latest/download/%s", types.ProjectName)
-	return fmt.Sprintf("%s-%s-%s", baseURL, runtime.GOOS, runtime.GOARCH)
 }
 
 // GetCurrentVersion 获取当前版本
