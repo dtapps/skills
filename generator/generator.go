@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -11,6 +12,9 @@ import (
 
 	"github.com/dtapp/skills/types"
 )
+
+//go:embed templates/skill.md.tpl
+var templatesFS embed.FS
 
 // SkillTemplateData 技能模板数据
 type SkillTemplateData struct {
@@ -62,11 +66,14 @@ func generateSkillMd(skillInfo types.SkillInfo, skillDir string, cliName string)
 		Date:            time.Now().Format("2006-01-02"),
 	}
 
-	// 读取模板文件
-	templatePath := filepath.Join("templates", "skill.md.tpl")
-	tmpl, err := template.ParseFiles(templatePath)
+	// 读取嵌入的模板文件
+	templateContent, err := templatesFS.ReadFile("templates/skill.md.tpl")
 	if err != nil {
-		return fmt.Errorf("模板文件不存在或解析失败: %v", err)
+		return fmt.Errorf("读取嵌入模板失败: %v", err)
+	}
+	tmpl, err := template.New("skill.md.tpl").Parse(string(templateContent))
+	if err != nil {
+		return fmt.Errorf("解析模板失败: %v", err)
 	}
 
 	filePath := filepath.Join(skillDir, "SKILL.md")

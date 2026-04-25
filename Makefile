@@ -267,8 +267,8 @@ package-deb: build-linux-amd64
 package-rpm: build-linux-amd64
 	@echo "[打包] 创建 rpm 包..."
 	@mkdir -p dist
-	# rpm 使用 x86_64 架构，需要创建符号链接
-	@ln -sf dtskills-linux-amd64 dist/dtskills-linux-x86_64 2>/dev/null || true
+	# rpm 使用 x86_64 架构，需要复制文件（nfpm 不处理符号链接）
+	@cp dist/dtskills-linux-amd64 dist/dtskills-linux-x86_64 2>/dev/null || true
 	$(call generate_nfpm_config,x86_64)
 	nfpm package -p rpm -f .nfpm-x86_64.yaml -t dist/dtskills.x86_64.rpm
 	@rm -f .nfpm-x86_64.yaml dist/dtskills-linux-x86_64
