@@ -1,0 +1,16 @@
+# dtSkill CLI 配置文件示例
+# 复制此文件到以下位置之一：
+#   1. 当前目录: ./config.yaml
+#   2. 用户配置: ~/.config/dtskills/config.yaml
+#   3. 系统配置: /etc/dtskills/config.yaml (deb/rpm 安装)
+
+# API Keys
+api_keys:
+  # 百度 API Key (用于百度搜索和百度百科技能)
+  # 申请地址: https://console.bce.baidu.com/
+  baidu: ""
+
+# 技能包配置
+skills:
+  # 技能包存放路径
+  path: "./skills"

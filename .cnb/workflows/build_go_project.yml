@@ -43,8 +43,8 @@
             # 2. 检查项目
             make check
 
-            # 3. 清理并构建项目
-            VERSION=${INTERIOR_VERSION} make build-all
+            # 3. 清理并构建/打包项目
+            VERSION=${INTERIOR_VERSION} make build-all package-linux-all
 
             echo "=============================="
             echo "🎉 处理结束 web_trigger_build_go_project"
@@ -71,7 +71,7 @@
             type: UPLOAD
             tag: ${INTERIOR_VERSION}
             attachments:
-              - "bin/*"
+              - "dist/*"
           exports:
             FILES: FILES
 

@@ -3,7 +3,7 @@
 #####################
 
 BINARY_NAME := dtskills
-BUILD_DIR := bin
+BUILD_DIR := dist
 
 #####################
 ## 构建相关
@@ -242,3 +242,28 @@ deps:
 generate:
 	@echo "[生成] 生成技能包..."
 	DTSKILLS_CONFIG=$(DTSKILLS_CONFIG) go run . generate
+
+#####################
+## 打包 (deb/rpm)
+#####################
+
+# 打包 deb
+.PHONY: package-deb
+package-deb: build-linux-amd64
+	@echo "[打包] 创建 deb 包..."
+	@mkdir -p dist
+	ARCH=amd64 VERSION=$(VERSION) nfpm package -p deb -f .nfpm.yaml -t dist/
+	@echo "✓ deb 包已创建: dist/"
+
+# 打包 rpm
+.PHONY: package-rpm
+package-rpm: build-linux-amd64
+	@echo "[打包] 创建 rpm 包..."
+	@mkdir -p dist
+	ARCH=amd64 VERSION=$(VERSION) nfpm package -p rpm -f .nfpm.yaml -t dist/
+	@echo "✓ rpm 包已创建: dist/"
+
+# 打包所有 Linux 包
+.PHONY: package-linux-all
+package-linux-all: package-deb package-rpm
+	@echo "✓ 所有 Linux 包已创建"

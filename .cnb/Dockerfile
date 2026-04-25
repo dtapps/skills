@@ -67,7 +67,12 @@ RUN ARCH=$(uname -m) && \
     echo "--- golangci-lint installed ---" && \
     golangci-lint --version
 
-# 6. 卸载不需要的工具，并清空所有 apt 缓存
+# 6. 安装 nfpm (用于打包 deb/rpm)
+RUN go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest && \
+    echo "--- nfpm installed ---" && \
+    nfpm --version
+
+# 7. 卸载不需要的工具，并清空所有 apt 缓存
 RUN apt-get purge -y wget xz-utils && \
     apt-get autoremove -y && \
     apt-get clean && \
