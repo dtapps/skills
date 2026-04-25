@@ -127,9 +127,20 @@ func (u *Updater) Update(binaryURL string) error {
 		return fmt.Errorf("下载失败，服务器返回: %d", resp.StatusCode)
 	}
 
+	// 获取当前二进制路径
+	targetPath, err := os.Executable()
+	if err != nil {
+		targetPath = os.Args[0]
+	}
+
+	// 检查是否需要提升权限（系统目录如 /usr/bin 需要 root 权限）
+	if needElevation(targetPath) {
+		return updateWithElevation(resp.Body, targetPath)
+	}
+
 	// 使用 selfupdate 应用更新
 	opts := selfupdate.Options{
-		TargetPath: os.Args[0],
+		TargetPath: targetPath,
 	}
 
 	if err := selfupdate.Apply(resp.Body, opts); err != nil {

@@ -29,6 +29,48 @@ make build-all
 
 从 [Releases](https://cnb.cool/dtapp/skills/-/releases) 页面下载对应平台的二进制文件。
 
+### 通过包管理器安装
+
+#### Debian/Ubuntu (deb 包)
+
+```bash
+# 下载 deb 包
+wget https://cnb.cool/dtapp/skills/-/releases/download/latest/dtskills_amd64.deb
+
+# 安装
+sudo dpkg -i dtskills_amd64.deb
+
+# 如果缺少依赖，修复依赖关系
+sudo apt-get install -f
+```
+
+安装后可直接使用 `dtskills` 命令：
+```bash
+dtskills --version
+dtskills generate
+```
+
+#### RHEL/CentOS/Fedora (rpm 包)
+
+```bash
+# 下载 rpm 包
+wget https://cnb.cool/dtapp/skills/-/releases/download/latest/dtskills.x86_64.rpm
+
+# 安装
+sudo rpm -i dtskills.x86_64.rpm
+
+# 或者使用 dnf
+sudo dnf install dtskills.x86_64.rpm
+```
+
+安装后可直接使用 `dtskills` 命令：
+```bash
+dtskills --version
+dtskills generate
+```
+
+**注意**：通过 deb/rpm 安装后，二进制文件位于 `/usr/bin/dtskills`，配置文件位于 `/etc/dtskills/config.yaml`。
+
 ## 使用方法
 
 ### 查看帮助
