@@ -8,6 +8,17 @@ import (
 	"os"
 )
 
+// binaryExt 返回二进制文件扩展名
+func binaryExt() string {
+	return ".exe"
+}
+
+// updateWithPlatform Windows 平台特定的更新逻辑
+func (u *Updater) updateWithPlatform(binaryURL, targetPath string) error {
+	// Windows 使用标准二进制升级
+	return u.updateBinary(binaryURL, targetPath)
+}
+
 // needElevation 检查是否需要提升权限（管理员权限）
 func needElevation(targetPath string) bool {
 	// 尝试写入文件测试权限

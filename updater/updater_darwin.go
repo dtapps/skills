@@ -11,6 +11,17 @@ import (
 	"time"
 )
 
+// binaryExt 返回二进制文件扩展名
+func binaryExt() string {
+	return ""
+}
+
+// updateWithPlatform macOS 平台特定的更新逻辑
+func (u *Updater) updateWithPlatform(binaryURL, targetPath string) error {
+	// macOS 使用标准二进制升级
+	return u.updateBinary(binaryURL, targetPath)
+}
+
 // needElevation 检查是否需要提升权限
 func needElevation(targetPath string) bool {
 	// 检查文件是否可写

@@ -100,13 +100,25 @@ func (u *Updater) getLatestVersion() (string, error) {
 // buildDownloadURL 构建下载 URL
 // 格式: https://cnb.cool/dtapp/skills/-/releases/download/{tag}/{binary-name}-{os}-{arch}
 func (u *Updater) buildDownloadURL(version string) string {
-	fileName := fmt.Sprintf("%s-%s-%s", types.ProjectName, runtime.GOOS, runtime.GOARCH)
+	fileName := fmt.Sprintf("%s-%s-%s%s", types.ProjectName, runtime.GOOS, runtime.GOARCH, binaryExt())
 	return fmt.Sprintf("%s/-/releases/download/%s/%s", u.repoURL, version, fileName)
 }
 
 // Update 执行更新
 // binaryURL: 二进制文件下载地址
 func (u *Updater) Update(binaryURL string) error {
+	// 获取当前二进制路径
+	targetPath, err := os.Executable()
+	if err != nil {
+		targetPath = os.Args[0]
+	}
+
+	// 平台特定的更新逻辑
+	return u.updateWithPlatform(binaryURL, targetPath)
+}
+
+// updateBinary 使用二进制方式升级
+func (u *Updater) updateBinary(binaryURL, targetPath string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
@@ -125,12 +137,6 @@ func (u *Updater) Update(binaryURL string) error {
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("下载失败，服务器返回: %d", resp.StatusCode)
-	}
-
-	// 获取当前二进制路径
-	targetPath, err := os.Executable()
-	if err != nil {
-		targetPath = os.Args[0]
 	}
 
 	// 检查是否需要提升权限（系统目录如 /usr/bin 需要 root 权限）
