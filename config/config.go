@@ -13,13 +13,10 @@ import (
 
 // LoadConfig 加载配置文件
 func LoadConfig() error {
-	// 设置默认值
-	viper.SetDefault("skills.path", "../")
-
 	// 配置文件名称
 	viper.SetConfigName("config")
 	// 配置文件类型
-	viper.SetConfigType("yaml")
+	// viper.SetConfigType("yaml")
 
 	// 检查是否通过环境变量指定了配置文件路径
 	configPath := os.Getenv(strings.ToUpper(types.ProjectName) + "_CONFIG")
@@ -101,6 +98,41 @@ func SaveConfigAs(path string) error {
 	}
 	fmt.Printf("配置已保存到: %s\n", path)
 	return nil
+}
+
+// InitConfig 初始化配置文件
+// 如果配置文件不存在，则创建默认配置文件
+func InitConfig() (string, error) {
+	// 检查是否已加载配置文件
+	if viper.ConfigFileUsed() != "" {
+		return viper.ConfigFileUsed(), nil
+	}
+
+	// 尝试在用户配置目录创建
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		// 如果无法获取用户配置目录，则在当前目录创建
+		configPath := "config.yaml"
+		viper.SetConfigFile(configPath)
+		if err := viper.WriteConfigAs(configPath); err != nil {
+			return "", fmt.Errorf("创建配置文件失败: %w", err)
+		}
+		return configPath, nil
+	}
+
+	// 在用户配置目录创建
+	projectConfigDir := filepath.Join(configDir, types.ProjectName)
+	if err := os.MkdirAll(projectConfigDir, 0755); err != nil {
+		return "", fmt.Errorf("创建配置目录失败: %w", err)
+	}
+
+	configPath := filepath.Join(projectConfigDir, "config.yaml")
+	viper.SetConfigFile(configPath)
+	if err := viper.WriteConfigAs(configPath); err != nil {
+		return "", fmt.Errorf("创建配置文件失败: %w", err)
+	}
+
+	return configPath, nil
 }
 
 // Get 获取任意配置项

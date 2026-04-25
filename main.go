@@ -68,6 +68,10 @@ var generateCmd = &cobra.Command{
 
 		// 获取输出目录（从配置文件）
 		outputDir := config.GetSkillsPath()
+		if outputDir == "" {
+			cmd.Println("错误: 未配置 skills.path，请使用 'dtskills config set skills.path <路径>' 设置")
+			return
+		}
 
 		// 创建打印机
 		p := ui.NewPrinter(cmd.OutOrStdout())
@@ -324,12 +328,30 @@ var configPathCmd = &cobra.Command{
 	},
 }
 
+// configInitCmd 初始化配置文件
+var configInitCmd = &cobra.Command{
+	Use:   "init",
+	Short: "初始化配置文件",
+	Run: func(cmd *cobra.Command, args []string) {
+		p := ui.NewPrinter(cmd.OutOrStdout())
+
+		path, err := config.InitConfig()
+		if err != nil {
+			p.Printf("初始化失败: %v\n", err)
+			return
+		}
+
+		p.Printf("✓ 配置文件已创建: %s\n", path)
+	},
+}
+
 func init() {
 	// 添加 config 子命令
 	configCmd.AddCommand(configGetCmd)
 	configCmd.AddCommand(configSetCmd)
 	configCmd.AddCommand(configListCmd)
 	configCmd.AddCommand(configPathCmd)
+	configCmd.AddCommand(configInitCmd)
 }
 
 func main() {
