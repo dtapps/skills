@@ -112,6 +112,8 @@ func updateWithElevation(reader io.Reader, targetPath string) error {
 		_ = os.Remove(tmpFile.Name())
 	}()
 
+	fmt.Printf("下载位置: %s\n", tmpFile.Name())
+
 	if _, err := io.Copy(tmpFile, reader); err != nil {
 		_ = tmpFile.Close()
 		return fmt.Errorf("写入临时文件失败: %w", err)
@@ -176,6 +178,8 @@ func (u *Updater) updateWithPackage(targetPath string, installType InstallType) 
 	defer func() {
 		_ = os.Remove(tmpFile.Name())
 	}()
+
+	fmt.Printf("下载位置: %s\n", tmpFile.Name())
 
 	if _, err := io.Copy(tmpFile, resp.Body); err != nil {
 		_ = tmpFile.Close()

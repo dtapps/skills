@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/dtapp/skills/ansi"
 	"github.com/dtapp/skills/config"
 	"github.com/dtapp/skills/generator"
 	"github.com/dtapp/skills/skills/baidu_baike"
@@ -15,6 +16,11 @@ import (
 
 	"github.com/spf13/cobra"
 )
+
+func init() {
+	// 启用 ANSI 颜色支持（Windows 需要特殊处理）
+	ansi.EnableANSI()
+}
 
 // 打包时注入
 var (
