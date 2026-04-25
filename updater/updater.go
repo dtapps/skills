@@ -139,9 +139,46 @@ func (u *Updater) updateBinary(binaryURL, targetPath string) error {
 		return fmt.Errorf("下载失败，服务器返回: %d", resp.StatusCode)
 	}
 
+	// 创建临时文件存储下载内容
+	tmpFile, err := os.CreateTemp("", "dtskills-download-*")
+	if err != nil {
+		return fmt.Errorf("创建临时文件失败: %w", err)
+	}
+	tmpPath := tmpFile.Name()
+	defer func() {
+		_ = tmpFile.Close()
+		_ = os.Remove(tmpPath)
+	}()
+
+	// 使用进度条下载
+	if resp.ContentLength > 0 {
+		if err := downloadWithProgressBar(resp.Body, tmpFile, resp.ContentLength, "下载更新"); err != nil {
+			return fmt.Errorf("下载失败: %w", err)
+		}
+	} else {
+		// 未知大小，直接下载
+		if _, err := io.Copy(tmpFile, resp.Body); err != nil {
+			return fmt.Errorf("下载失败: %w", err)
+		}
+	}
+
+	// 关闭临时文件以便读取
+	if err := tmpFile.Close(); err != nil {
+		return fmt.Errorf("关闭临时文件失败: %w", err)
+	}
+
+	// 重新打开临时文件用于更新
+	updateFile, err := os.Open(tmpPath)
+	if err != nil {
+		return fmt.Errorf("打开临时文件失败: %w", err)
+	}
+	defer func() {
+		_ = updateFile.Close()
+	}()
+
 	// 检查是否需要提升权限（系统目录如 /usr/bin 需要 root 权限）
 	if needElevation(targetPath) {
-		return updateWithElevation(resp.Body, targetPath)
+		return updateWithElevation(updateFile, targetPath)
 	}
 
 	// 使用 selfupdate 应用更新
@@ -149,7 +186,7 @@ func (u *Updater) updateBinary(binaryURL, targetPath string) error {
 		TargetPath: targetPath,
 	}
 
-	if err := selfupdate.Apply(resp.Body, opts); err != nil {
+	if err := selfupdate.Apply(updateFile, opts); err != nil {
 		return fmt.Errorf("应用更新失败: %w", err)
 	}
 
