@@ -2,42 +2,14 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 
 	"github.com/dtapp/skills/stats"
+	"github.com/dtapp/skills/ui"
 
-	"charm.land/bubbles/v2/table"
-	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
 	"github.com/spf13/cobra"
 )
-
-// tableModel 表格模型
-type tableModel struct {
-	table table.Model
-}
-
-func (m tableModel) Init() tea.Cmd {
-	return nil
-}
-
-func (m tableModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		if msg.String() == "q" || msg.String() == "esc" || msg.String() == "ctrl+c" {
-			return m, tea.Quit
-		}
-	}
-	m.table, cmd = m.table.Update(msg)
-	return m, cmd
-}
-
-func (m tableModel) View() tea.View {
-	return tea.NewView(m.table.View() + "\n" + lipgloss.NewStyle().Foreground(lipgloss.Color("241")).Render("按 q 退出"))
-}
 
 // NewStatsCmd 创建统计命令
 func NewStatsCmd() *cobra.Command {
@@ -54,6 +26,11 @@ func NewStatsCmd() *cobra.Command {
 	cmd.AddCommand(newStatsPathCmd())
 
 	return cmd
+}
+
+type skillInfo struct {
+	name string
+	stat *stats.SkillStat
 }
 
 // newStatsListCmd 列出所有技能统计
@@ -89,25 +66,23 @@ func newStatsListCmd() *cobra.Command {
 				return renderSkillsTable(skills, manager.GetTotalCalls())
 			}
 
-			// 简单文本输出
+			// 使用 BoxTable 输出
 			cmd.Println()
-			cmd.Println("┌─────────────────────┬──────────┬──────────┬──────────┬─────────────┬─────────────────────┐")
-			cmd.Println("│ 技能名称            │ 总调用   │ 成功     │ 失败     │ 平均耗时    │ 最后使用            │")
-			cmd.Println("├─────────────────────┼──────────┼──────────┼──────────┼─────────────┼─────────────────────┤")
-
+			var rows [][]string
 			for _, s := range skills {
-				name := padRight(s.name, 19)
-				total := padRight(fmt.Sprintf("%d", s.stat.TotalCalls), 8)
-				success := padRight(fmt.Sprintf("%d", s.stat.SuccessCalls), 8)
-				failed := padRight(fmt.Sprintf("%d", s.stat.FailedCalls), 8)
-				avgTime := padRight(fmt.Sprintf("%.0fms", s.stat.AvgDuration), 11)
-				lastUsed := s.stat.LastUsedAt.Format("2006-01-02 15:04")
-
-				cmd.Printf("│ %s │ %s │ %s │ %s │ %s │ %s │\n",
-					name, total, success, failed, avgTime, lastUsed)
+				rows = append(rows, []string{
+					s.name,
+					fmt.Sprintf("%d", s.stat.TotalCalls),
+					fmt.Sprintf("%d", s.stat.SuccessCalls),
+					fmt.Sprintf("%d", s.stat.FailedCalls),
+					fmt.Sprintf("%.0fms", s.stat.AvgDuration),
+					s.stat.LastUsedAt.Format("2006-01-02 15:04"),
+				})
 			}
-
-			cmd.Println("└─────────────────────┴──────────┴──────────┴──────────┴─────────────┴─────────────────────┘")
+			ui.BoxTable(
+				[]string{"技能名称", "总调用", "成功", "失败", "平均耗时", "最后使用"},
+				rows,
+			)
 			cmd.Printf("\n总计调用次数: %d\n", manager.GetTotalCalls())
 
 			return nil
@@ -119,14 +94,9 @@ func newStatsListCmd() *cobra.Command {
 	return cmd
 }
 
-type skillInfo struct {
-	name string
-	stat *stats.SkillStat
-}
-
 // renderSkillsTable 使用 bubbles table 渲染
 func renderSkillsTable(skills []skillInfo, totalCalls int64) error {
-	columns := []table.Column{
+	columns := []ui.TableColumn{
 		{Title: "技能名称", Width: 20},
 		{Title: "总调用", Width: 10},
 		{Title: "成功", Width: 10},
@@ -135,9 +105,9 @@ func renderSkillsTable(skills []skillInfo, totalCalls int64) error {
 		{Title: "最后使用", Width: 20},
 	}
 
-	var rows []table.Row
+	var rows []ui.TableRow
 	for _, s := range skills {
-		rows = append(rows, table.Row{
+		rows = append(rows, ui.TableRow{
 			s.name,
 			fmt.Sprintf("%d", s.stat.TotalCalls),
 			fmt.Sprintf("%d", s.stat.SuccessCalls),
@@ -147,44 +117,20 @@ func renderSkillsTable(skills []skillInfo, totalCalls int64) error {
 		})
 	}
 
-	t := table.New(
-		table.WithColumns(columns),
-		table.WithRows(rows),
-		table.WithFocused(true),
-		table.WithHeight(len(rows)+1),
-	)
+	opts := ui.TableOptions{
+		Columns:      columns,
+		Rows:         rows,
+		Height:       len(rows) + 1,
+		Focused:      true,
+		ShowHelp:     true,
+		FallbackText: true,
+	}
 
-	s := table.DefaultStyles()
-	s.Header = s.Header.
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240")).
-		BorderBottom(true).
-		Bold(false)
-	s.Selected = s.Selected.
-		Foreground(lipgloss.Color("229")).
-		Background(lipgloss.Color("57")).
-		Bold(false)
-	t.SetStyles(s)
-
-	m := tableModel{table: t}
-
-	// 检测是否有 TTY
-	if _, err := tea.NewProgram(m, tea.WithoutRenderer()).Run(); err != nil {
-		if strings.Contains(err.Error(), "open /dev/tty: device not configured") {
-			// 无 TTY 环境，使用简单输出
-			fmt.Println("技能名称            总调用     成功       失败       平均耗时     最后使用")
-			fmt.Println(strings.Repeat("-", 80))
-			for _, s := range skills {
-				fmt.Printf("%-20s %-10d %-10d %-10d %-12.0f %s\n",
-					s.name, s.stat.TotalCalls, s.stat.SuccessCalls, s.stat.FailedCalls,
-					s.stat.AvgDuration, s.stat.LastUsedAt.Format("2006-01-02 15:04"))
-			}
-			fmt.Printf("\n总计调用次数: %d\n", totalCalls)
-			return nil
-		}
+	if err := ui.RenderTable(opts); err != nil {
 		return err
 	}
 
+	fmt.Printf("\n总计调用次数: %d\n", totalCalls)
 	return nil
 }
 
@@ -227,104 +173,38 @@ func newStatsShowCmd() *cobra.Command {
 				cmd.Println()
 				cmd.Println("  命令使用情况:")
 
-				// 使用 table 渲染命令统计
-				if err := renderCommandsTable(stat.Commands); err != nil {
-					// 回退到简单输出
-					cmd.Println("  ┌─────────────────────┬──────────┬─────────────────────┐")
-					cmd.Println("  │ 命令                │ 调用次数 │ 最后使用            │")
-					cmd.Println("  ├─────────────────────┼──────────┼─────────────────────┤")
-
-					// 按调用次数排序
-					type cmdInfo struct {
-						name string
-						stat *stats.CommandStat
-					}
-					var cmds []cmdInfo
-					for name, cstat := range stat.Commands {
-						cmds = append(cmds, cmdInfo{name: name, stat: cstat})
-					}
-					sort.Slice(cmds, func(i, j int) bool {
-						return cmds[i].stat.Calls > cmds[j].stat.Calls
-					})
-
-					for _, c := range cmds {
-						name := padRight(c.name, 19)
-						calls := padRight(fmt.Sprintf("%d", c.stat.Calls), 8)
-						lastUsed := c.stat.LastUsed.Format("2006-01-02 15:04")
-						cmd.Printf("  │ %s │ %s │ %s │\n", name, calls, lastUsed)
-					}
-
-					cmd.Println("  └─────────────────────┴──────────┴─────────────────────┘")
+				// 按调用次数排序
+				type cmdInfo struct {
+					name string
+					stat *stats.CommandStat
 				}
+				var cmds []cmdInfo
+				for name, cstat := range stat.Commands {
+					cmds = append(cmds, cmdInfo{name: name, stat: cstat})
+				}
+				sort.Slice(cmds, func(i, j int) bool {
+					return cmds[i].stat.Calls > cmds[j].stat.Calls
+				})
+
+				// 使用 BoxTable 输出
+				var rows [][]string
+				for _, c := range cmds {
+					rows = append(rows, []string{
+						c.name,
+						fmt.Sprintf("%d", c.stat.Calls),
+						c.stat.LastUsed.Format("2006-01-02 15:04"),
+					})
+				}
+				ui.BoxTable(
+					[]string{"命令", "调用次数", "最后使用"},
+					rows,
+				)
 			}
 
 			cmd.Println()
 			return nil
 		},
 	}
-}
-
-// renderCommandsTable 渲染命令表格
-func renderCommandsTable(commands map[string]*stats.CommandStat) error {
-	columns := []table.Column{
-		{Title: "命令", Width: 20},
-		{Title: "调用次数", Width: 12},
-		{Title: "最后使用", Width: 20},
-	}
-
-	// 按调用次数排序
-	type cmdInfo struct {
-		name string
-		stat *stats.CommandStat
-	}
-	var cmds []cmdInfo
-	for name, cstat := range commands {
-		cmds = append(cmds, cmdInfo{name: name, stat: cstat})
-	}
-	sort.Slice(cmds, func(i, j int) bool {
-		return cmds[i].stat.Calls > cmds[j].stat.Calls
-	})
-
-	var rows []table.Row
-	for _, c := range cmds {
-		rows = append(rows, table.Row{
-			c.name,
-			fmt.Sprintf("%d", c.stat.Calls),
-			c.stat.LastUsed.Format("2006-01-02 15:04"),
-		})
-	}
-
-	t := table.New(
-		table.WithColumns(columns),
-		table.WithRows(rows),
-		table.WithFocused(true),
-		table.WithHeight(len(rows)+1),
-	)
-
-	s := table.DefaultStyles()
-	s.Header = s.Header.
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240")).
-		BorderBottom(true).
-		Bold(false)
-	s.Selected = s.Selected.
-		Foreground(lipgloss.Color("229")).
-		Background(lipgloss.Color("57")).
-		Bold(false)
-	t.SetStyles(s)
-
-	m := tableModel{table: t}
-
-	// 检测是否有 TTY
-	if _, err := tea.NewProgram(m, tea.WithoutRenderer()).Run(); err != nil {
-		if !strings.Contains(err.Error(), "open /dev/tty: device not configured") {
-			return err
-		}
-		// 无 TTY 返回错误让调用方处理
-		return fmt.Errorf("no tty")
-	}
-
-	return nil
 }
 
 // newStatsRecentCmd 显示最近使用记录
@@ -353,16 +233,9 @@ func newStatsRecentCmd() *cobra.Command {
 
 			cmd.Println()
 			cmd.Printf("最近 %d 条使用记录:\n", len(records))
-			cmd.Println("┌─────────────────────┬─────────────────────┬──────────┬────────┬──────────────────────────┐")
-			cmd.Println("│ 时间                │ 技能                │ 命令     │ 耗时   │ 结果                     │")
-			cmd.Println("├─────────────────────┼─────────────────────┼──────────┼────────┼──────────────────────────┤")
 
+			var rows [][]string
 			for _, r := range records {
-				timeStr := r.StartTime.Format("01-02 15:04:05")
-				skill := padRight(r.Skill, 19)
-				command := padRight(r.Command, 8)
-				duration := padRight(fmt.Sprintf("%dms", r.Duration.Milliseconds()), 6)
-
 				result := "✓ 成功"
 				if !r.Success {
 					result = "✗ 失败"
@@ -370,13 +243,19 @@ func newStatsRecentCmd() *cobra.Command {
 						result = fmt.Sprintf("✗ %s", truncate(r.ErrorMsg, 20))
 					}
 				}
-				result = padRight(result, 24)
 
-				cmd.Printf("│ %s │ %s │ %s │ %s │ %s │\n",
-					timeStr, skill, command, duration, result)
+				rows = append(rows, []string{
+					r.StartTime.Format("01-02 15:04:05"),
+					r.Skill,
+					r.Command,
+					fmt.Sprintf("%dms", r.Duration.Milliseconds()),
+					result,
+				})
 			}
-
-			cmd.Println("└─────────────────────┴─────────────────────┴──────────┴────────┴──────────────────────────┘")
+			ui.BoxTable(
+				[]string{"时间", "技能", "命令", "耗时", "结果"},
+				rows,
+			)
 			cmd.Println()
 			return nil
 		},
@@ -390,7 +269,7 @@ func newStatsRecentCmd() *cobra.Command {
 
 // renderRecentTable 渲染最近使用记录表格
 func renderRecentTable(records []stats.UsageRecord) error {
-	columns := []table.Column{
+	columns := []ui.TableColumn{
 		{Title: "时间", Width: 20},
 		{Title: "技能", Width: 20},
 		{Title: "命令", Width: 12},
@@ -398,7 +277,7 @@ func renderRecentTable(records []stats.UsageRecord) error {
 		{Title: "结果", Width: 25},
 	}
 
-	var rows []table.Row
+	var rows []ui.TableRow
 	for _, r := range records {
 		result := "✓ 成功"
 		if !r.Success {
@@ -408,7 +287,7 @@ func renderRecentTable(records []stats.UsageRecord) error {
 			}
 		}
 
-		rows = append(rows, table.Row{
+		rows = append(rows, ui.TableRow{
 			r.StartTime.Format("01-02 15:04:05"),
 			r.Skill,
 			r.Command,
@@ -417,50 +296,16 @@ func renderRecentTable(records []stats.UsageRecord) error {
 		})
 	}
 
-	t := table.New(
-		table.WithColumns(columns),
-		table.WithRows(rows),
-		table.WithFocused(true),
-		table.WithHeight(len(rows)+1),
-	)
-
-	s := table.DefaultStyles()
-	s.Header = s.Header.
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240")).
-		BorderBottom(true).
-		Bold(false)
-	s.Selected = s.Selected.
-		Foreground(lipgloss.Color("229")).
-		Background(lipgloss.Color("57")).
-		Bold(false)
-	t.SetStyles(s)
-
-	m := tableModel{table: t}
-
-	// 检测是否有 TTY
-	if _, err := tea.NewProgram(m, tea.WithoutRenderer()).Run(); err != nil {
-		if strings.Contains(err.Error(), "open /dev/tty: device not configured") {
-			// 无 TTY 环境，使用简单输出
-			fmt.Println("时间                 技能                 命令         耗时       结果")
-			fmt.Println(strings.Repeat("-", 90))
-			for _, r := range records {
-				result := "✓ 成功"
-				if !r.Success {
-					result = "✗ 失败"
-				}
-				fmt.Printf("%-20s %-20s %-12s %-10s %s\n",
-					r.StartTime.Format("01-02 15:04:05"),
-					r.Skill, r.Command,
-					fmt.Sprintf("%dms", r.Duration.Milliseconds()),
-					result)
-			}
-			return nil
-		}
-		return err
+	opts := ui.TableOptions{
+		Columns:      columns,
+		Rows:         rows,
+		Height:       len(rows) + 1,
+		Focused:      true,
+		ShowHelp:     true,
+		FallbackText: true,
 	}
 
-	return nil
+	return ui.RenderTable(opts)
 }
 
 // newStatsResetCmd 重置统计数据
@@ -514,27 +359,10 @@ func newStatsPathCmd() *cobra.Command {
 	}
 }
 
-// padRight 右填充字符串
-func padRight(s string, length int) string {
-	if len(s) > length {
-		return s[:length-3] + "..."
-	}
-	return s + strings.Repeat(" ", length-len(s))
-}
-
 // truncate 截断字符串
 func truncate(s string, maxLen int) string {
 	if len(s) <= maxLen {
 		return s
 	}
 	return s[:maxLen-3] + "..."
-}
-
-// isTTY 检查是否有 TTY
-func isTTY() bool {
-	fileInfo, err := os.Stdout.Stat()
-	if err != nil {
-		return false
-	}
-	return (fileInfo.Mode() & os.ModeCharDevice) == os.ModeCharDevice
 }
