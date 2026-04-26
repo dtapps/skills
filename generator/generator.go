@@ -1,11 +1,13 @@
 package generator
 
 import (
+	"bytes"
 	"embed"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"text/template"
 	"time"
@@ -33,12 +35,12 @@ func GenerateSkill(skillInfo types.SkillInfo, outputDir string, isPicoclaw bool,
 		return fmt.Errorf("创建 skill 目录失败: %v", err)
 	}
 
-	// 生成 SKILL.md 文件
+	// 生成 SKILL.md 文件（带变化检测）
 	if err := generateSkillMd(skillInfo, skillDir, cliName); err != nil {
 		return fmt.Errorf("生成 SKILL.md 失败: %v", err)
 	}
 
-	// 如果是 picoclaw，生成 .skill-origin.json 文件
+	// 如果是 picoclaw，生成 .skill-origin.json 文件（如果文件不存在）
 	if isPicoclaw {
 		if err := generateSkillOrigin(skillDir); err != nil {
 			return fmt.Errorf("生成 .skill-origin.json 失败: %v", err)
@@ -48,7 +50,7 @@ func GenerateSkill(skillInfo types.SkillInfo, outputDir string, isPicoclaw bool,
 	return nil
 }
 
-// generateSkillMd 生成 SKILL.md 文件
+// generateSkillMd 生成 SKILL.md 文件（带变化检测）
 func generateSkillMd(skillInfo types.SkillInfo, skillDir string, cliName string) error {
 	// 将 Version 和 Author 和 Date 加入到 Metadata 中
 	if skillInfo.Metadata == nil {
@@ -76,20 +78,47 @@ func generateSkillMd(skillInfo types.SkillInfo, skillDir string, cliName string)
 		return fmt.Errorf("解析模板失败: %v", err)
 	}
 
-	filePath := filepath.Join(skillDir, "SKILL.md")
-	file, err := os.Create(filePath)
-	if err != nil {
-		return err
+	// 生成新的内容到内存
+	var newContent bytes.Buffer
+	if err := tmpl.Execute(&newContent, data); err != nil {
+		return fmt.Errorf("执行模板失败: %v", err)
 	}
-	defer func() {
-		_ = file.Close()
-	}()
 
-	return tmpl.Execute(file, data)
+	filePath := filepath.Join(skillDir, "SKILL.md")
+
+	// 检查现有文件是否存在
+	existingContent, err := os.ReadFile(filePath)
+	if err == nil {
+		// 文件存在，比较内容（忽略 date 元数据）
+		if contentsEqualIgnoreDate(string(existingContent), newContent.String()) {
+			// 内容相同，跳过写入
+			return nil
+		}
+	}
+	// 文件不存在或内容不同，写入新内容
+	return os.WriteFile(filePath, newContent.Bytes(), 0644)
 }
 
-// generateSkillOrigin 生成 .skill-origin.json 文件
+// contentsEqualIgnoreDate 比较两个 SKILL.md 内容是否相同（忽略 date 元数据）
+func contentsEqualIgnoreDate(existing, new string) bool {
+	// 使用正则表达式移除 date 元数据行
+	datePattern := regexp.MustCompile(`(?m)^\s*date:\s*"[^"]*"\s*$`)
+
+	existingNormalized := datePattern.ReplaceAllString(existing, "")
+	newNormalized := datePattern.ReplaceAllString(new, "")
+
+	return strings.TrimSpace(existingNormalized) == strings.TrimSpace(newNormalized)
+}
+
+// generateSkillOrigin 生成 .skill-origin.json 文件（仅在文件不存在时创建）
 func generateSkillOrigin(skillDir string) error {
+	filePath := filepath.Join(skillDir, ".skill-origin.json")
+
+	// 如果文件已存在，跳过生成，保留原有的 installed_at
+	if _, err := os.Stat(filePath); err == nil {
+		return nil
+	}
+
 	origin := types.SkillOrigin{
 		Version:     1,
 		OriginKind:  "manual",
@@ -101,7 +130,6 @@ func generateSkillOrigin(skillDir string) error {
 		return err
 	}
 
-	filePath := filepath.Join(skillDir, ".skill-origin.json")
 	return os.WriteFile(filePath, data, 0644)
 }
 
