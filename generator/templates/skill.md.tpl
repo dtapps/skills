@@ -39,7 +39,7 @@ allowed-tools: "{{.AllowedToolsStr}}"
 
 **用法：**
 ```bash
-{{.Usage}}
+{{.Usage}}{{- range .Flags }}{{if .Required}} -{{.Shorthand}} <{{.Name}}>{{end}}{{end}}
 ```
 {{- if .Flags }}
 **参数：**

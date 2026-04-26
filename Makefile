@@ -9,7 +9,7 @@ BINARY_NAME := dtskills
 BUILD_DIR := dist
 
 # 工作目录（配置文件和统计数据都存储在这里）
-DTSKILLS_WORK_DIR = ./.dtskills
+DTSKILLS_WORK_DIR = .
 
 #####################
 ## 开发工具

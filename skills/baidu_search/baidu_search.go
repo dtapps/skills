@@ -56,9 +56,11 @@ func extractFlags(cmd *cobra.Command) []types.Flag {
 			Description: f.Usage,
 			Default:     f.DefValue,
 		}
-		// 检查是否是必填参数
-		if cmd.MarkFlagRequired(f.Name) != nil {
-			flag.Required = true
+		// 检查是否是必填参数 (通过 Annotations 判断)
+		if f.Annotations != nil {
+			if _, ok := f.Annotations["cobra_annotation_bash_completion_one_required_flag"]; ok {
+				flag.Required = true
+			}
 		}
 		flags = append(flags, flag)
 	})
