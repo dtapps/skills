@@ -2,9 +2,11 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 
+	"github.com/dtapp/skills/config"
 	"github.com/dtapp/skills/stats"
 	"github.com/dtapp/skills/ui"
 
@@ -346,14 +348,32 @@ func newStatsResetCmd() *cobra.Command {
 func newStatsPathCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "path",
-		Short: "显示统计数据文件路径",
+		Short: "显示统计存储路径",
+		Long:  "显示统计数据文件路径和工作目录等存储相关信息",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			p := ui.NewPrinter(cmd.OutOrStdout())
+			p.Title("📊 统计存储路径")
+			p.Println()
+
+			// 显示工作目录
+			workDir := config.GetWorkDir()
+			p.Printf("  工作目录: %s\n", workDir)
+
+			// 显示统计数据文件路径
 			manager, err := stats.GetManager()
 			if err != nil {
-				return fmt.Errorf("初始化统计管理器失败: %w", err)
+				p.Printf("  统计文件: (初始化失败: %v)\n", err)
+			} else {
+				p.Printf("  统计文件: %s\n", manager.GetStatsFilePath())
 			}
 
-			cmd.Printf("统计数据文件: %s\n", manager.GetStatsFilePath())
+			// 显示环境变量（如果设置了）
+			envVar := "DTSKILLS_WORK_DIR"
+			if envValue := os.Getenv(envVar); envValue != "" {
+				p.Printf("  环境变量: %s=%s\n", envVar, envValue)
+			}
+
+			p.Println()
 			return nil
 		},
 	}

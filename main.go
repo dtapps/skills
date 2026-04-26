@@ -321,15 +321,32 @@ var configListCmd = &cobra.Command{
 // configPathCmd 显示配置文件路径
 var configPathCmd = &cobra.Command{
 	Use:   "path",
-	Short: "显示配置文件路径",
+	Short: "显示配置存储路径",
+	Long:  "显示配置文件路径和工作目录等存储相关信息",
 	Run: func(cmd *cobra.Command, args []string) {
 		p := ui.NewPrinter(cmd.OutOrStdout())
-		path := config.GetConfigFile()
-		if path == "" {
-			p.Println("未加载配置文件（使用默认配置）")
+		p.Title("📁 配置存储路径")
+		p.Println()
+
+		// 显示工作目录
+		workDir := config.GetWorkDir()
+		p.Printf("  工作目录: %s\n", workDir)
+
+		// 显示配置文件路径
+		configFile := config.GetConfigFile()
+		if configFile == "" {
+			p.Printf("  配置文件: (未加载，使用默认配置)\n")
 		} else {
-			p.Printf("配置文件: %s\n", path)
+			p.Printf("  配置文件: %s\n", configFile)
 		}
+
+		// 显示环境变量（如果设置了）
+		envVar := "DTSKILLS_WORK_DIR"
+		if envValue := os.Getenv(envVar); envValue != "" {
+			p.Printf("  环境变量: %s=%s\n", envVar, envValue)
+		}
+
+		p.Println()
 	},
 }
 

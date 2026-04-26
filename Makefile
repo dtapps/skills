@@ -22,6 +22,20 @@ generate:
 	@mkdir -p $(DTSKILLS_WORK_DIR)
 	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . generate
 
+# 获取配置文件路径
+.PHONY: config-path
+config-path:
+	@echo "[配置] 获取配置文件路径..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . config path
+
+# 获取统计数据路径
+.PHONY: stats-path
+stats-path:
+	@echo "[统计] 获取统计数据路径..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . stats path
+
 #####################
 ## 检查相关
 #####################
@@ -255,7 +269,6 @@ package-deb: build-linux-amd64
 package-rpm: build-linux-amd64
 	@echo "[打包] 创建 rpm 包..."
 	@mkdir -p dist
-	# rpm 使用 x86_64 架构，需要复制文件（nfpm 不处理符号链接）
 	@cp dist/dtskills-linux-amd64 dist/dtskills-linux-x86_64 2>/dev/null || true
 	$(call generate_nfpm_config,x86_64)
 	nfpm package -p rpm -f .nfpm-x86_64.yaml -t dist/dtskills.x86_64.rpm
