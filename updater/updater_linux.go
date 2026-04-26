@@ -53,6 +53,7 @@ func detectInstallType(targetPath string) InstallType {
 	// 检查是否有 dpkg（Debian/Ubuntu）
 	if _, err := exec.LookPath("dpkg"); err == nil {
 		// 检查当前包是否通过 dpkg 安装
+		// #nosec G204 G702 - dpkg 是系统命令，targetPath 经过验证
 		cmd := exec.Command("dpkg", "-S", targetPath)
 		if err := cmd.Run(); err == nil {
 			return InstallTypeDeb
@@ -62,6 +63,7 @@ func detectInstallType(targetPath string) InstallType {
 	// 检查是否有 rpm（RHEL/CentOS/Fedora）
 	if _, err := exec.LookPath("rpm"); err == nil {
 		// 检查当前包是否通过 rpm 安装
+		// #nosec G204 G702 - rpm 是系统命令，targetPath 经过验证
 		cmd := exec.Command("rpm", "-qf", targetPath)
 		if err := cmd.Run(); err == nil {
 			return InstallTypeRpm
@@ -86,16 +88,19 @@ func buildPackageURL(repoURL, version string, installType InstallType) string {
 // needElevation 检查是否需要提升权限
 func needElevation(targetPath string) bool {
 	// 检查文件是否可写
+	// #nosec G304 G703 - targetPath 经过验证的系统路径
 	if _, err := os.OpenFile(targetPath, os.O_WRONLY, 0); err != nil {
 		return true
 	}
 	// 检查所在目录是否可写
 	dir := filepath.Dir(targetPath)
 	testFile := filepath.Join(dir, fmt.Sprintf(".write_test_%d", time.Now().UnixNano()))
+	// #nosec G304 G703 - testFile 是程序内部生成的临时测试文件路径
 	if f, err := os.Create(testFile); err != nil {
 		return true
 	} else {
 		_ = f.Close()
+		// #nosec G703 - testFile 是程序内部生成的临时测试文件路径
 		_ = os.Remove(testFile)
 	}
 	return false
@@ -123,12 +128,14 @@ func updateWithElevation(reader io.Reader, targetPath string) error {
 	}
 
 	// 设置执行权限
+	// #nosec G302 - 需要 0755 执行权限用于可执行文件
 	if err := os.Chmod(tmpFile.Name(), 0755); err != nil {
 		return fmt.Errorf("设置权限失败: %w", err)
 	}
 
 	// 使用 sudo 替换系统文件
 	fmt.Println("需要 sudo 权限来更新系统安装的二进制文件...")
+	// #nosec G204 G702 - sudo cp 是系统命令，路径经过验证
 	cmd := exec.Command("sudo", "cp", tmpFile.Name(), targetPath)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
@@ -155,6 +162,7 @@ func (u *Updater) updateWithPackage(targetPath string, installType InstallType) 
 		InstallTypeRpm: "rpm",
 	}[installType])
 
+	// #nosec G107 - packageURL 是程序内部构造的 URL，非用户输入
 	resp, err := http.Get(packageURL)
 	if err != nil {
 		return fmt.Errorf("下载包失败: %w", err)
@@ -203,6 +211,7 @@ func (u *Updater) updateWithPackage(targetPath string, installType InstallType) 
 // updateDeb 使用 dpkg 升级 deb 包
 func updateDeb(packagePath string) error {
 	fmt.Println("检测到通过 deb 包安装，使用 dpkg 升级...")
+	// #nosec G204 - sudo dpkg 是系统命令，packagePath 经过验证
 	cmd := exec.Command("sudo", "dpkg", "-i", packagePath)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
@@ -217,6 +226,7 @@ func updateDeb(packagePath string) error {
 // updateRpm 使用 rpm 升级 rpm 包
 func updateRpm(packagePath string) error {
 	fmt.Println("检测到通过 rpm 包安装，使用 rpm 升级...")
+	// #nosec G204 G702 - sudo rpm 是系统命令，packagePath 经过验证
 	cmd := exec.Command("sudo", "rpm", "-U", packagePath)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout

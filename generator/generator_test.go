@@ -106,7 +106,9 @@ func TestGenerateSkillMd_SkipWhenContentUnchanged(t *testing.T) {
 	if err != nil {
 		t.Fatalf("创建临时目录失败: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
 
 	skillInfo := types.SkillInfo{
 		Name:        "test-skill",
@@ -157,7 +159,9 @@ func TestGenerateSkillMd_UpdateWhenContentChanged(t *testing.T) {
 	if err != nil {
 		t.Fatalf("创建临时目录失败: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
 
 	skillInfo := types.SkillInfo{
 		Name:        "test-skill",
@@ -211,7 +215,9 @@ func TestGenerateSkillOrigin_SkipWhenFileExists(t *testing.T) {
 	if err != nil {
 		t.Fatalf("创建临时目录失败: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
 
 	originPath := filepath.Join(tempDir, ".skill-origin.json")
 
@@ -221,7 +227,7 @@ func TestGenerateSkillOrigin_SkipWhenFileExists(t *testing.T) {
   "origin_kind": "manual",
   "installed_at": 1234567890000
 }`
-	err = os.WriteFile(originPath, []byte(originalContent), 0644)
+	err = os.WriteFile(originPath, []byte(originalContent), 0600)
 	if err != nil {
 		t.Fatalf("创建原始文件失败: %v", err)
 	}
@@ -233,6 +239,7 @@ func TestGenerateSkillOrigin_SkipWhenFileExists(t *testing.T) {
 	}
 
 	// 读取文件内容
+	// #nosec G304 - originPath 是测试中的临时文件路径
 	content, err := os.ReadFile(originPath)
 	if err != nil {
 		t.Fatalf("读取文件失败: %v", err)
@@ -250,7 +257,9 @@ func TestGenerateSkillOrigin_CreateWhenFileNotExists(t *testing.T) {
 	if err != nil {
 		t.Fatalf("创建临时目录失败: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		_ = os.RemoveAll(tempDir)
+	}()
 
 	originPath := filepath.Join(tempDir, ".skill-origin.json")
 

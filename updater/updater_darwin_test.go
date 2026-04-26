@@ -13,7 +13,7 @@ func TestNeedElevationDarwin(t *testing.T) {
 
 	// 创建一个可写文件
 	writableFile := filepath.Join(tmpDir, "writable")
-	if err := os.WriteFile(writableFile, []byte("test"), 0644); err != nil {
+	if err := os.WriteFile(writableFile, []byte("test"), 0600); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 

@@ -168,6 +168,7 @@ func (u *Updater) updateBinary(binaryURL, targetPath string) error {
 	}
 
 	// 重新打开临时文件用于更新
+	// #nosec G304 - tmpPath 是程序内部生成的临时文件路径，非用户输入
 	updateFile, err := os.Open(tmpPath)
 	if err != nil {
 		return fmt.Errorf("打开临时文件失败: %w", err)

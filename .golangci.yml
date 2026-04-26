@@ -19,6 +19,7 @@ linters:
     # --- 并发与安全 ---
     - bodyclose        # 【重要】检查 HTTP 响应体是否被关闭 (防止内存泄漏)
     - contextcheck     # 检查上下文 (context) 是否被正确传递 (防止超时控制失效)
+    - gosec            # 【安全】Go 安全 checker，检测安全问题如文件权限、不安全代码等
     
     # --- 可选 (根据喜好) ---
     - unconvert        # 移除不必要的类型转换

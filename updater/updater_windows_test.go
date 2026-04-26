@@ -27,6 +27,7 @@ func TestUpdateWithElevationBasic(t *testing.T) {
 	// 创建模拟的旧版本可执行文件
 	oldExe := filepath.Join(tempDir, "testapp.exe")
 	oldContent := []byte("old version")
+	// #nosec G306 - 测试文件权限
 	if err := os.WriteFile(oldExe, oldContent, 0755); err != nil {
 		t.Fatalf("创建旧版本文件失败: %v", err)
 	}
@@ -45,6 +46,7 @@ func TestUpdateWithElevationBasic(t *testing.T) {
 	time.Sleep(3 * time.Second)
 
 	// 验证文件是否被替换
+	// #nosec G304 - oldExe 是测试中的临时文件路径
 	content, err := os.ReadFile(oldExe)
 	if err != nil {
 		t.Errorf("读取文件失败: %v", err)
@@ -68,6 +70,7 @@ func TestUpdateWithElevationTempFile(t *testing.T) {
 
 	// 创建模拟的可执行文件
 	targetExe := filepath.Join(tempDir, "target.exe")
+	// #nosec G306 - 测试文件权限
 	if err := os.WriteFile(targetExe, []byte("target"), 0755); err != nil {
 		t.Fatalf("创建目标文件失败: %v", err)
 	}
@@ -107,6 +110,7 @@ func TestUpdateWithElevationScriptContent(t *testing.T) {
 
 	// 创建模拟的可执行文件
 	targetExe := filepath.Join(tempDir, "target.exe")
+	// #nosec G306 - 测试文件权限
 	if err := os.WriteFile(targetExe, []byte("target"), 0755); err != nil {
 		t.Fatalf("创建目标文件失败: %v", err)
 	}
@@ -182,6 +186,7 @@ func TestUpdateWithElevationEmptyContent(t *testing.T) {
 	}()
 
 	targetExe := filepath.Join(tempDir, "target.exe")
+	// #nosec G306 - 测试文件权限
 	if err := os.WriteFile(targetExe, []byte("content"), 0755); err != nil {
 		t.Fatalf("创建目标文件失败: %v", err)
 	}
@@ -206,6 +211,7 @@ func TestUpdateWithElevationLargeFile(t *testing.T) {
 	}()
 
 	targetExe := filepath.Join(tempDir, "target.exe")
+	// #nosec G306 - 测试文件权限
 	if err := os.WriteFile(targetExe, []byte("old"), 0755); err != nil {
 		t.Fatalf("创建目标文件失败: %v", err)
 	}
@@ -237,6 +243,7 @@ func TestUpdateWithElevationSpecialChars(t *testing.T) {
 
 	// 包含空格和特殊字符的路径
 	targetExe := filepath.Join(tempDir, "my app (v2).exe")
+	// #nosec G306 - 测试文件权限
 	if err := os.WriteFile(targetExe, []byte("old"), 0755); err != nil {
 		t.Fatalf("创建目标文件失败: %v", err)
 	}
@@ -263,12 +270,14 @@ func TestUpdateWithElevationPermission(t *testing.T) {
 	}()
 
 	targetExe := filepath.Join(tempDir, "readonly.exe")
+	// #nosec G306 - 测试文件权限
 	if err := os.WriteFile(targetExe, []byte("content"), 0755); err != nil {
 		t.Fatalf("创建目标文件失败: %v", err)
 	}
 
 	// 设置为只读
-	if err := os.Chmod(targetExe, 0444); err != nil {
+	// #nosec G302 - 测试需要设置只读权限
+	if err := os.Chmod(targetExe, 0400); err != nil {
 		t.Logf("设置只读权限失败: %v", err)
 	}
 
@@ -282,6 +291,7 @@ func TestUpdateWithElevationPermission(t *testing.T) {
 	}
 
 	// 恢复权限以便清理
+	// #nosec G302 - 测试结束后恢复权限
 	_ = os.Chmod(targetExe, 0755)
 }
 
@@ -312,6 +322,7 @@ func TestConcurrentUpdates(t *testing.T) {
 	}()
 
 	targetExe := filepath.Join(tempDir, "target.exe")
+	// #nosec G306 - 测试文件权限
 	if err := os.WriteFile(targetExe, []byte("old"), 0755); err != nil {
 		t.Fatalf("创建目标文件失败: %v", err)
 	}

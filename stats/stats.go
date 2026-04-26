@@ -78,7 +78,7 @@ func GetManager() (*Manager, error) {
 func newManager() (*Manager, error) {
 	// 使用工作目录存储统计数据
 	workDir := config.GetWorkDir()
-	if err := os.MkdirAll(workDir, 0755); err != nil {
+	if err := os.MkdirAll(workDir, 0750); err != nil {
 		return nil, fmt.Errorf("创建工作目录失败: %w", err)
 	}
 
@@ -120,7 +120,7 @@ func (m *Manager) save() error {
 		return fmt.Errorf("序列化统计数据失败: %w", err)
 	}
 
-	return os.WriteFile(m.filePath, data, 0644)
+	return os.WriteFile(m.filePath, data, 0600)
 }
 
 // RecordUsage 记录技能使用

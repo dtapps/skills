@@ -16,8 +16,8 @@ func EnableANSI() {
 	setConsoleCP := kernel32.NewProc("SetConsoleCP")
 	setConsoleOutputCP := kernel32.NewProc("SetConsoleOutputCP")
 	// 65001 是 UTF-8 代码页
-	setConsoleCP.Call(65001)
-	setConsoleOutputCP.Call(65001)
+	_, _, _ = setConsoleCP.Call(65001)
+	_, _, _ = setConsoleOutputCP.Call(65001)
 
 	// 获取标准输出句柄
 	handle := syscall.Handle(os.Stdout.Fd())
@@ -27,6 +27,7 @@ func EnableANSI() {
 	getConsoleMode := kernel32.NewProc("GetConsoleMode")
 	setConsoleMode := kernel32.NewProc("SetConsoleMode")
 
+	// #nosec G103 - 使用 unsafe.Pointer 调用 Windows API 是必需的
 	ret, _, _ := getConsoleMode.Call(uintptr(handle), uintptr(unsafe.Pointer(&mode)))
 	if ret == 0 {
 		return // 获取失败，不启用 ANSI

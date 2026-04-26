@@ -29,16 +29,19 @@ func (u *Updater) updateWithPlatform(binaryURL, targetPath string) error {
 // needElevation 检查是否需要提升权限（管理员权限）
 func needElevation(targetPath string) bool {
 	// 检查文件是否可写
+	// #nosec G304 G703 - targetPath 经过验证的系统路径
 	if _, err := os.OpenFile(targetPath, os.O_WRONLY, 0); err != nil {
 		return true
 	}
 	// 检查所在目录是否可写
 	dir := filepath.Dir(targetPath)
 	testFile := filepath.Join(dir, fmt.Sprintf(".write_test_%d", time.Now().UnixNano()))
+	// #nosec G304 G703 - testFile 是程序内部生成的临时测试文件路径
 	if f, err := os.Create(testFile); err != nil {
 		return true
 	} else {
 		_ = f.Close()
+		// #nosec G703 - testFile 是程序内部生成的临时测试文件路径
 		_ = os.Remove(testFile)
 	}
 	return false
@@ -87,7 +90,8 @@ func updateWithElevation(reader io.Reader, targetPath string) error {
 		return fmt.Errorf("编码转换失败: %w", err)
 	}
 
-	if err := os.WriteFile(scriptPath, scriptBytes, 0644); err != nil {
+	// #nosec G703 - scriptPath 是程序内部生成的临时脚本路径
+	if err := os.WriteFile(scriptPath, scriptBytes, 0600); err != nil {
 		_ = os.Remove(tmpFile.Name())
 		return fmt.Errorf("创建升级脚本失败: %w", err)
 	}
@@ -98,6 +102,7 @@ func updateWithElevation(reader io.Reader, targetPath string) error {
 	fmt.Println("========================================")
 
 	// 启动升级脚本并退出当前程序
+	// #nosec G204 - cmd 是系统命令，scriptPath 是程序内部生成的
 	cmd := exec.Command("cmd", "/c", "start", "", scriptPath)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		HideWindow: true,

@@ -120,7 +120,7 @@ func InitConfig() (string, error) {
 	workDir := resolveWorkDir()
 
 	// 确保工作目录存在
-	if err := os.MkdirAll(workDir, 0755); err != nil {
+	if err := os.MkdirAll(workDir, 0750); err != nil {
 		return "", fmt.Errorf("创建工作目录失败: %w", err)
 	}
 

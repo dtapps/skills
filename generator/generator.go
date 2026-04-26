@@ -31,7 +31,7 @@ type SkillTemplateData struct {
 func GenerateSkill(skillInfo types.SkillInfo, outputDir string, isPicoclaw bool, cliName string) error {
 	// 创建 skill 目录
 	skillDir := filepath.Join(outputDir, skillInfo.Name)
-	if err := os.MkdirAll(skillDir, 0755); err != nil {
+	if err := os.MkdirAll(skillDir, 0750); err != nil {
 		return fmt.Errorf("创建 skill 目录失败: %v", err)
 	}
 
@@ -87,6 +87,7 @@ func generateSkillMd(skillInfo types.SkillInfo, skillDir string, cliName string)
 	filePath := filepath.Join(skillDir, "SKILL.md")
 
 	// 检查现有文件是否存在
+	// #nosec G304 - filePath 是程序内部构造的路径
 	existingContent, err := os.ReadFile(filePath)
 	if err == nil {
 		// 文件存在，比较内容（忽略 date 元数据）
@@ -96,7 +97,7 @@ func generateSkillMd(skillInfo types.SkillInfo, skillDir string, cliName string)
 		}
 	}
 	// 文件不存在或内容不同，写入新内容
-	return os.WriteFile(filePath, newContent.Bytes(), 0644)
+	return os.WriteFile(filePath, newContent.Bytes(), 0600)
 }
 
 // contentsEqualIgnoreDate 比较两个 SKILL.md 内容是否相同（忽略 date 元数据）
@@ -130,7 +131,7 @@ func generateSkillOrigin(skillDir string) error {
 		return err
 	}
 
-	return os.WriteFile(filePath, data, 0644)
+	return os.WriteFile(filePath, data, 0600)
 }
 
 // generateCommandsFromSkillInfo 从 SkillInfo 生成命令说明

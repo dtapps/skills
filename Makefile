@@ -45,20 +45,20 @@ check:
 	go fmt ./...
 	@echo "[Check] 运行 golangci-lint 深度扫描 (Tags: $(LINT_TAGS))..."
 	@echo "  -> Linux 平台 (amd64)"
-	GOOS=linux GOARCH=amd64 golangci-lint run ./... \
-		--build-tags $(LINT_TAGS) \
-		--timeout 5m \
-		--fix
+	GOOS=linux GOARCH=amd64 golangci-lint fmt
+	GOOS=linux GOARCH=amd64 golangci-lint run --build-tags $(LINT_TAGS)
+	GOOS=linux GOARCH=amd64 golangci-lint run --fix --build-tags $(LINT_TAGS)
+	
 	@echo "  -> macOS 平台 (arm64)"
-	GOOS=darwin GOARCH=arm64 golangci-lint run ./... \
-		--build-tags $(LINT_TAGS) \
-		--timeout 5m \
-		--fix
+	GOOS=darwin GOARCH=arm64 golangci-lint fmt
+	GOOS=darwin GOARCH=arm64 golangci-lint run --build-tags $(LINT_TAGS)
+	GOOS=darwin GOARCH=arm64 golangci-lint run --fix --build-tags $(LINT_TAGS)
+	
 	@echo "  -> Windows 平台 (amd64)"
-	GOOS=windows GOARCH=amd64 golangci-lint run ./... \
-		--build-tags $(LINT_TAGS) \
-		--timeout 5m \
-		--fix
+	GOOS=windows GOARCH=amd64 golangci-lint fmt
+	GOOS=windows GOARCH=amd64 golangci-lint run --build-tags $(LINT_TAGS)
+	GOOS=windows GOARCH=amd64 golangci-lint run --fix --build-tags $(LINT_TAGS)
+	
 
 #####################
 ## 构建相关
