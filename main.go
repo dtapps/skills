@@ -393,6 +393,13 @@ func main() {
 		fmt.Fprintf(os.Stderr, "警告: 加载配置文件失败: %v\n", err)
 	}
 
+	// 设置 Cobra 使用中文帮助信息
+	rootCmd.SetUsageTemplate(usageTemplate)
+	rootCmd.SetHelpTemplate(helpTemplate)
+
+	// 禁用默认的 completion 命令，我们将添加自定义的
+	rootCmd.CompletionOptions.DisableDefaultCmd = true
+
 	// 添加子命令
 	rootCmd.AddCommand(generateCmd)
 	rootCmd.AddCommand(listCmd)
@@ -405,8 +412,73 @@ func main() {
 	rootCmd.AddCommand(stats.WrapSkillCommands(baidu_baike.NewBaiduBaikeCmd()))
 	rootCmd.AddCommand(stats.WrapSkillCommands(baidu_search.NewBaiduSearchCmd()))
 
+	// 添加自定义的 completion 命令（带中文描述）
+	rootCmd.AddCommand(newCompletionCmd())
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+}
+
+// 自定义中文使用模板
+var usageTemplate = `用法:
+  {{.UseLine}}{{if .HasAvailableSubCommands}}
+
+可用命令:{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help") (eq .Name "completion"))}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
+
+标志:
+{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
+
+全局标志:
+{{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableSubCommands}}
+
+使用 "{{.CommandPath}} [command] --help" 获取命令的详细信息{{end}}
+`
+
+// 自定义中文帮助模板
+var helpTemplate = `{{with (or .Long .Short)}}{{. | trimTrailingWhitespaces}}
+
+{{end}}{{if or .Runnable .HasSubCommands}}{{.UsageString}}{{end}}`
+
+// newCompletionCmd 创建自定义的 completion 命令（带中文描述）
+func newCompletionCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "completion [bash|zsh|fish|powershell]",
+		Short: "生成自动补全脚本",
+		Long:  "为指定的 shell 生成自动补全脚本，支持 bash、zsh、fish 和 powershell",
+		Example: `  # Bash
+  $ source <(dtskills completion bash)
+
+  # Zsh
+  $ source <(dtskills completion zsh)
+
+  # Fish
+  $ dtskills completion fish | source
+
+  # PowerShell
+  PS> dtskills completion powershell | Out-String | Invoke-Expression`,
+		ValidArgs: []string{"bash", "zsh", "fish", "powershell"},
+		Args:      cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
+		Run: func(cmd *cobra.Command, args []string) {
+			var err error
+			switch args[0] {
+			case "bash":
+				err = cmd.Root().GenBashCompletion(cmd.OutOrStdout())
+			case "zsh":
+				err = cmd.Root().GenZshCompletion(cmd.OutOrStdout())
+			case "fish":
+				err = cmd.Root().GenFishCompletion(cmd.OutOrStdout(), true)
+			case "powershell":
+				err = cmd.Root().GenPowerShellCompletionWithDesc(cmd.OutOrStdout())
+			}
+			if err != nil {
+				cmd.PrintErrf("生成补全脚本失败: %v\n", err)
+				os.Exit(1)
+			}
+		},
+	}
+
+	return cmd
 }
