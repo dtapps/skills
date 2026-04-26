@@ -44,6 +44,8 @@ func LoadConfig() error {
 	viper.AddConfigPath(workDir)
 
 	// 自动读取环境变量
+	// viper 的优先级：环境变量 > 配置文件 > 默认值
+	// 所以如果同时设置了环境变量和配置文件，环境变量会覆盖配置文件的值
 	viper.AutomaticEnv()
 	// 环境变量前缀
 	viper.SetEnvPrefix(strings.ToUpper(types.ProjectName))
