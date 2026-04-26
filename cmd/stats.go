@@ -16,9 +16,10 @@ import (
 // NewStatsCmd 创建统计命令
 func NewStatsCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "stats",
-		Short: "查看技能使用统计",
-		Long:  "查看和管理技能使用统计数据，包括调用次数、成功率、执行时间等",
+		Use:     "stats",
+		Aliases: []string{"s", "stat"},
+		Short:   "查看技能使用统计",
+		Long:    "查看和管理技能使用统计数据，包括调用次数、成功率、执行时间等",
 	}
 
 	cmd.AddCommand(newStatsListCmd())

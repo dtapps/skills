@@ -145,10 +145,11 @@ var rootCmd = &cobra.Command{
 }
 
 var generateCmd = &cobra.Command{
-	Use:   "generate",
-	Short: "生成新的 skill",
-	Long:  "通过模板生成新的 skill 目录和文件",
-	Run:   runGenerate,
+	Use:     "generate",
+	Aliases: []string{"g", "gen"},
+	Short:   "生成新的 skill",
+	Long:    "通过模板生成新的 skill 目录和文件",
+	Run:     runGenerate,
 }
 
 var listCmd = &cobra.Command{
@@ -185,8 +186,9 @@ var listCmd = &cobra.Command{
 
 // versionCmd 显示版本信息
 var versionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "显示版本信息",
+	Use:     "version",
+	Aliases: []string{"v"},
+	Short:   "显示版本信息",
 	Run: func(cmd *cobra.Command, args []string) {
 		p := ui.NewPrinter(cmd.OutOrStdout())
 		p.Title("📦 " + types.ProjectName)
@@ -199,9 +201,10 @@ var versionCmd = &cobra.Command{
 
 // upgradeCmd 检查并执行更新
 var upgradeCmd = &cobra.Command{
-	Use:   "upgrade",
-	Short: "检查并更新到最新版本",
-	Long:  "检查是否有新版本可用，并下载更新",
+	Use:     "upgrade",
+	Aliases: []string{"u", "up"},
+	Short:   "检查并更新到最新版本",
+	Long:    "检查是否有新版本可用，并下载更新",
 	Run: func(cmd *cobra.Command, args []string) {
 		p := ui.NewPrinter(cmd.OutOrStdout())
 
@@ -260,9 +263,10 @@ func init() {
 
 // configCmd 配置管理命令
 var configCmd = &cobra.Command{
-	Use:   "config",
-	Short: "配置管理",
-	Long:  "查看和修改配置",
+	Use:     "config",
+	Aliases: []string{"c", "cfg"},
+	Short:   "配置管理",
+	Long:    "查看和修改配置",
 }
 
 // configGetCmd 获取配置项
