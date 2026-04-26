@@ -48,7 +48,7 @@ func TestNeedElevationDarwin(t *testing.T) {
 }
 
 func TestUpdateWithPlatformDarwin(t *testing.T) {
-	_ = New("v1.0.0", "https://cnb.cool/dtapp/skills")
+	_ = New("v1.0.0", "abc123", "https://cnb.cool/dtapp/skills")
 
 	// 测试 macOS 平台使用二进制升级
 	tmpDir := t.TempDir()

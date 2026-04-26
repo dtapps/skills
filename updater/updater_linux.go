@@ -150,7 +150,7 @@ func updateWithElevation(reader io.Reader, targetPath string) error {
 // updateWithPackage 使用包管理器升级
 func (u *Updater) updateWithPackage(targetPath string, installType InstallType) error {
 	// 获取最新版本
-	latestVersion, err := u.getLatestVersion()
+	latestVersion, _, err := u.getLatestVersionAndCommit()
 	if err != nil {
 		return fmt.Errorf("获取最新版本失败: %w", err)
 	}

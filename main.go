@@ -208,19 +208,23 @@ var upgradeCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		p := ui.NewPrinter(cmd.OutOrStdout())
 
-		// 获取仓库 URL（可以从配置文件读取，或使用默认值）
+		// 获取参数
 		repoURL, _ := cmd.Flags().GetString("repo")
+		force, _ := cmd.Flags().GetBool("force")
 
 		// 创建更新器
-		u := updater.New(Version, repoURL)
+		u := updater.New(Version, GitCommit, repoURL)
 
 		p.Title("🔍 检查更新")
 		p.Printf("当前版本: %s\n", Version)
+		if GitCommit != "unknown" {
+			p.Printf("当前 Commit: %s\n", GitCommit)
+		}
 		p.Printf("平台: %s\n", updater.GetPlatformInfo())
 		p.Println()
 
 		// 检查更新
-		hasUpdate, latestVersion, downloadURL, err := u.Check()
+		hasUpdate, latestVersion, latestCommit, downloadURL, err := u.Check(force)
 		if err != nil {
 			p.Printf("检查更新失败: %v\n", err)
 			return
@@ -232,6 +236,9 @@ var upgradeCmd = &cobra.Command{
 		}
 
 		p.Printf("发现新版本: %s\n", latestVersion)
+		if latestCommit != "" {
+			p.Printf("最新 Commit: %s\n", latestCommit)
+		}
 		p.Printf("下载地址: %s\n", downloadURL)
 		p.Println()
 
@@ -259,6 +266,7 @@ var upgradeCmd = &cobra.Command{
 func init() {
 	// 为 upgrade 命令添加 flag
 	upgradeCmd.Flags().String("repo", "", "仓库地址（可选，默认: https://cnb.cool/dtapp/skills）")
+	upgradeCmd.Flags().Bool("force", false, "强制升级，即使版本号相同")
 }
 
 // configCmd 配置管理命令

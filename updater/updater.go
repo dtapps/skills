@@ -17,13 +17,16 @@ import (
 // Updater 更新器
 type Updater struct {
 	currentVersion string
+	currentCommit  string
 	repoURL        string
 	httpClient     *http.Client
 }
 
 // New 创建更新器
+// currentVersion: 当前版本号
+// currentCommit: 当前 Git Commit ID
 // repoURL: 仓库地址，如 https://cnb.cool/dtapp/skills
-func New(currentVersion, repoURL string) *Updater {
+func New(currentVersion, currentCommit, repoURL string) *Updater {
 	if repoURL == "" {
 		// 默认使用 cnb.cool 仓库
 		repoURL = "https://cnb.cool/dtapp/skills"
@@ -31,6 +34,7 @@ func New(currentVersion, repoURL string) *Updater {
 
 	return &Updater{
 		currentVersion: currentVersion,
+		currentCommit:  currentCommit,
 		repoURL:        repoURL,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
@@ -39,27 +43,46 @@ func New(currentVersion, repoURL string) *Updater {
 }
 
 // Check 检查是否有新版本
-// 返回: 是否有新版本, 最新版本号, 下载URL, 错误
-func (u *Updater) Check() (bool, string, string, error) {
-	// 从 release 页面获取最新版本
-	latestVersion, err := u.getLatestVersion()
+// force: 是否强制升级（即使版本号相同）
+// 返回: 是否有新版本, 最新版本号, 最新Commit, 下载URL, 错误
+func (u *Updater) Check(force bool) (bool, string, string, string, error) {
+	// 从 release 页面获取最新版本和 Commit
+	latestVersion, latestCommit, err := u.getLatestVersionAndCommit()
 	if err != nil {
-		return false, "", "", err
-	}
-
-	// 比较版本
-	if latestVersion == u.currentVersion && u.currentVersion != "dev" {
-		return false, latestVersion, "", nil
+		return false, "", "", "", err
 	}
 
 	// 构建下载 URL
 	downloadURL := u.buildDownloadURL(latestVersion)
 
-	return true, latestVersion, downloadURL, nil
+	// 如果是 dev 版本，允许升级
+	if u.currentVersion == "dev" {
+		return true, latestVersion, latestCommit, downloadURL, nil
+	}
+
+	// 如果强制升级，直接返回
+	if force {
+		return true, latestVersion, latestCommit, downloadURL, nil
+	}
+
+	// 比较版本号
+	if latestVersion != u.currentVersion {
+		return true, latestVersion, latestCommit, downloadURL, nil
+	}
+
+	// 版本号相同，比较 Commit ID（如果都有的话）
+	if u.currentCommit != "" && u.currentCommit != "unknown" &&
+		latestCommit != "" && latestCommit != u.currentCommit {
+		// Commit 不同，说明是同一版本的不同构建
+		return true, latestVersion, latestCommit, downloadURL, nil
+	}
+
+	// 版本和 Commit 都相同，不需要升级
+	return false, latestVersion, latestCommit, downloadURL, nil
 }
 
-// getLatestVersion 从 CNB release 页面获取最新版本号
-func (u *Updater) getLatestVersion() (string, error) {
+// getLatestVersionAndCommit 从 CNB release 页面获取最新版本号和 Commit ID
+func (u *Updater) getLatestVersionAndCommit() (string, string, error) {
 	releasesURL := u.repoURL + "/-/releases"
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -67,34 +90,46 @@ func (u *Updater) getLatestVersion() (string, error) {
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, releasesURL, nil)
 	if err != nil {
-		return "", fmt.Errorf("创建请求失败: %w", err)
+		return "", "", fmt.Errorf("创建请求失败: %w", err)
 	}
 
 	resp, err := u.httpClient.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("无法连接到 CNB: %w", err)
+		return "", "", fmt.Errorf("无法连接到 CNB: %w", err)
 	}
 	defer func() {
 		_ = resp.Body.Close()
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("服务器返回错误: %d", resp.StatusCode)
+		return "", "", fmt.Errorf("服务器返回错误: %d", resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("读取响应失败: %w", err)
+		return "", "", fmt.Errorf("读取响应失败: %w", err)
 	}
+
+	bodyStr := string(body)
 
 	// 匹配 CNB HTML 里的标签路径，例如: /dtapp/skills/-/releases/tag/v1.0.1
-	re := regexp.MustCompile(`releases/tag/(v\d+\.\d+\.\d+)`)
-	match := re.FindStringSubmatch(string(body))
-	if len(match) < 2 {
-		return "", fmt.Errorf("无法从 CNB 页面解析最新版本号，请检查仓库是否公开")
+	versionRe := regexp.MustCompile(`releases/tag/(v\d+\.\d+\.\d+)`)
+	versionMatch := versionRe.FindStringSubmatch(bodyStr)
+	if len(versionMatch) < 2 {
+		return "", "", fmt.Errorf("无法从 CNB 页面解析最新版本号，请检查仓库是否公开")
+	}
+	latestVersion := versionMatch[1]
+
+	// 尝试匹配 Commit ID（CNB release 页面通常会显示）
+	// 匹配格式: commit/abc123 或 data-commit="abc123"
+	commitRe := regexp.MustCompile(`commit/([a-f0-9]{7,40})`)
+	commitMatch := commitRe.FindStringSubmatch(bodyStr)
+	latestCommit := ""
+	if len(commitMatch) >= 2 {
+		latestCommit = commitMatch[1]
 	}
 
-	return match[1], nil
+	return latestVersion, latestCommit, nil
 }
 
 // buildDownloadURL 构建下载 URL

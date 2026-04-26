@@ -8,18 +8,21 @@ func TestNew(t *testing.T) {
 	tests := []struct {
 		name           string
 		currentVersion string
+		currentCommit  string
 		repoURL        string
 		wantRepoURL    string
 	}{
 		{
 			name:           "默认仓库地址",
 			currentVersion: "v1.0.0",
+			currentCommit:  "abc123",
 			repoURL:        "",
 			wantRepoURL:    "https://cnb.cool/dtapp/skills",
 		},
 		{
 			name:           "自定义仓库地址",
 			currentVersion: "v1.0.0",
+			currentCommit:  "abc123",
 			repoURL:        "https://example.com/repo",
 			wantRepoURL:    "https://example.com/repo",
 		},
@@ -27,7 +30,7 @@ func TestNew(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			u := New(tt.currentVersion, tt.repoURL)
+			u := New(tt.currentVersion, tt.currentCommit, tt.repoURL)
 			if u.repoURL != tt.wantRepoURL {
 				t.Errorf("New() repoURL = %v, want %v", u.repoURL, tt.wantRepoURL)
 			}
@@ -39,7 +42,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestGetCurrentVersion(t *testing.T) {
-	u := New("v1.2.3", "")
+	u := New("v1.2.3", "abc123", "")
 	if got := u.GetCurrentVersion(); got != "v1.2.3" {
 		t.Errorf("GetCurrentVersion() = %v, want %v", got, "v1.2.3")
 	}
@@ -54,7 +57,7 @@ func TestGetPlatformInfo(t *testing.T) {
 }
 
 func TestBuildDownloadURL(t *testing.T) {
-	u := New("v1.0.0", "https://cnb.cool/dtapp/skills")
+	u := New("v1.0.0", "abc123", "https://cnb.cool/dtapp/skills")
 
 	tests := []struct {
 		name    string
