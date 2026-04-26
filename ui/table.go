@@ -155,72 +155,90 @@ func renderTextTable(opts TableOptions) error {
 	return nil
 }
 
-// padRight 右填充字符串
-func padRight(s string, length int) string {
-	if len(s) > length {
-		if length > 3 {
-			return s[:length-3] + "..."
+// stringWidth 计算字符串显示宽度（中文字符占2个宽度）
+func stringWidth(s string) int {
+	width := 0
+	for _, r := range s {
+		if r > 127 {
+			width += 2
+		} else {
+			width += 1
 		}
-		return s[:length]
 	}
-	return s + strings.Repeat(" ", length-len(s))
+	return width
+}
+
+// padRight 右填充字符串到指定显示宽度
+func padRight(s string, length int) string {
+	w := stringWidth(s)
+	if w > length {
+		// 需要截断，简单处理：截断到 length-3，加 "..."
+		var result strings.Builder
+		currentWidth := 0
+		for _, r := range s {
+			rw := 2
+			if r <= 127 {
+				rw = 1
+			}
+			if currentWidth+rw > length-3 {
+				break
+			}
+			result.WriteString(string(r))
+			currentWidth += rw
+		}
+		return result.String() + "..."
+	}
+	return s + strings.Repeat(" ", length-w)
 }
 
 // SimpleTable 简单表格（纯文本，无需 TTY）
 func SimpleTable(headers []string, rows [][]string) {
-	// 计算列宽
+	// 计算列宽（考虑中文字符）
 	colWidths := make([]int, len(headers))
 	for i, h := range headers {
-		colWidths[i] = len(h)
+		colWidths[i] = stringWidth(h)
 	}
 	for _, row := range rows {
 		for i, cell := range row {
-			if i < len(colWidths) && len(cell) > colWidths[i] {
-				colWidths[i] = len(cell)
+			if i < len(colWidths) {
+				w := stringWidth(cell)
+				if w > colWidths[i] {
+					colWidths[i] = w
+				}
 			}
 		}
 	}
 
 	// 打印表头
-	printRow(headers, colWidths)
+	printRowWithWidth(headers, colWidths)
 
 	// 打印分隔线
 	var sep []string
-	for i, width := range colWidths {
-		if i < len(headers) {
-			sep = append(sep, strings.Repeat("─", width+2))
-		}
+	for _, width := range colWidths {
+		sep = append(sep, strings.Repeat("─", width+2))
 	}
 	fmt.Println("├" + strings.Join(sep, "┼") + "┤")
 
 	// 打印数据行
 	for _, row := range rows {
-		printRow(row, colWidths)
+		printRowWithWidth(row, colWidths)
 	}
-}
-
-// printRow 打印一行
-func printRow(cells []string, widths []int) {
-	var parts []string
-	for i, cell := range cells {
-		if i < len(widths) {
-			parts = append(parts, " "+padRight(cell, widths[i])+" ")
-		}
-	}
-	fmt.Println("│" + strings.Join(parts, "│") + "│")
 }
 
 // BoxTable 带边框的表格
 func BoxTable(headers []string, rows [][]string) {
-	// 计算列宽
+	// 计算列宽（取表头和数据的最大值，考虑中文字符）
 	colWidths := make([]int, len(headers))
 	for i, h := range headers {
-		colWidths[i] = len(h)
+		colWidths[i] = stringWidth(h)
 	}
 	for _, row := range rows {
 		for i, cell := range row {
-			if i < len(colWidths) && len(cell) > colWidths[i] {
-				colWidths[i] = len(cell)
+			if i < len(colWidths) {
+				w := stringWidth(cell)
+				if w > colWidths[i] {
+					colWidths[i] = w
+				}
 			}
 		}
 	}
@@ -229,21 +247,29 @@ func BoxTable(headers []string, rows [][]string) {
 	printBorder(colWidths, "┌", "┬", "┐")
 
 	// 打印表头
-	printRow(headers, colWidths)
+	printRowWithWidth(headers, colWidths)
 
 	// 打印分隔线
 	printBorder(colWidths, "├", "┼", "┤")
 
 	// 打印数据行
-	for i, row := range rows {
-		printRow(row, colWidths)
-		if i < len(rows)-1 {
-			printBorder(colWidths, "├", "┼", "┤")
-		}
+	for _, row := range rows {
+		printRowWithWidth(row, colWidths)
 	}
 
 	// 打印底部边框
 	printBorder(colWidths, "└", "┴", "┘")
+}
+
+// printRowWithWidth 按指定宽度打印一行
+func printRowWithWidth(cells []string, widths []int) {
+	var parts []string
+	for i, cell := range cells {
+		if i < len(widths) {
+			parts = append(parts, " "+padRight(cell, widths[i])+" ")
+		}
+	}
+	fmt.Println("│" + strings.Join(parts, "│") + "│")
 }
 
 // printBorder 打印边框
