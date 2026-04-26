@@ -31,117 +31,124 @@ var (
 	BuildTime = "unknown" // 构建时间
 )
 
+// runGenerate 执行生成 skill 的逻辑
+func runGenerate(cmd *cobra.Command, args []string) {
+	// 预定义的 skill 模板列表（从已注册的 skill 中获取）
+	// 使用 GetSkillInfo() 获取包含自动提取 Commands 的完整信息
+	availableSkills := []types.SkillInfo{
+		baidu_baike.GetSkillInfo(),
+		baidu_search.GetSkillInfo(),
+	}
+
+	// 构建选项列表（显示中文名称、原名字和版本号）
+	var options []ui.Option
+	for _, skill := range availableSkills {
+		display := fmt.Sprintf("%s [%s] (v%s)", skill.Description, skill.Name, skill.Version)
+		options = append(options, ui.Option{
+			Display: display,
+			Value:   skill.Name,
+		})
+	}
+
+	// 多选交互
+	selectedSkillNames, err := ui.RunMultiSelect("选择要生成的 skill", options)
+	if err != nil {
+		cmd.Printf("错误：%v\n", err)
+		return
+	}
+
+	if len(selectedSkillNames) == 0 {
+		cmd.Println("未选择任何 skill")
+		return
+	}
+
+	// 询问是否是 picoclaw
+	isPicoclaw := ui.RunConfirm("是否为 PicoClaw 生成 .skill-origin.json 文件？", false)
+
+	// 获取输出目录（从配置文件）
+	outputDir := config.GetSkillsPath()
+	if outputDir == "" {
+		cmd.Println("错误: 未配置 skills.path，请使用 'dtskills config set skills.path <路径>' 设置")
+		return
+	}
+
+	// 创建打印机
+	p := ui.NewPrinter(cmd.OutOrStdout())
+
+	// 显示摘要并确认
+	p.Println()
+	p.Title("📋 生成摘要")
+	p.Println()
+	p.Println("将要生成以下 skill：")
+	for _, skill := range selectedSkillNames {
+		p.Printf("  ✓ %s\n", skill)
+	}
+	p.Println()
+	p.Printf("输出目录: %s\n", outputDir)
+	p.Printf("PicoClaw 模式: %s\n", map[bool]string{true: "是", false: "否"}[isPicoclaw])
+
+	if !ui.RunConfirm("确认生成？", false) {
+		cmd.Println("已取消生成")
+		return
+	}
+
+	// 生成结果记录
+	results := make(map[string]error)
+
+	// 为每个选择的 skill 生成文件
+	for _, skillName := range selectedSkillNames {
+		// 查找对应的 skillInfo
+		var skillInfo types.SkillInfo
+		for _, skill := range availableSkills {
+			if skill.Name == skillName {
+				skillInfo = skill
+				break
+			}
+		}
+
+		// 生成 skill，传入 CLI 名称
+		err := generator.GenerateSkill(skillInfo, outputDir, isPicoclaw, types.ProjectName)
+		results[skillName] = err
+	}
+
+	// 显示结果
+	p.Println()
+	successCount := 0
+	failCount := 0
+	for skill, err := range results {
+		if err != nil {
+			p.Printf("  ✗ %s: %s\n", skill, err)
+			failCount++
+		} else {
+			p.Printf("  ✓ %s: 生成成功\n", skill)
+			successCount++
+		}
+	}
+	p.Println()
+	if failCount == 0 {
+		p.Title(fmt.Sprintf("✅ 全部 %d 个 skill 生成完成！", successCount))
+	} else {
+		p.Printf("%s (成功: %d, 失败: %d)\n",
+			ui.SubtleStyle.Render("⚠️ 部分 skill 生成失败"),
+			successCount, failCount)
+	}
+}
+
 var rootCmd = &cobra.Command{
 	Use:   "skills",
 	Short: "Skill 管理工具",
 	Long:  "用于下载、执行和管理技能包",
+	Run: func(cmd *cobra.Command, args []string) {
+		// 如果没有子命令，默认执行 generate
+		runGenerate(cmd, args)
+	},
 }
 
 var generateCmd = &cobra.Command{
 	Use:   "generate",
 	Short: "生成新的 skill",
 	Long:  "通过模板生成新的 skill 目录和文件",
-	Run: func(cmd *cobra.Command, args []string) {
-		// 预定义的 skill 模板列表（从已注册的 skill 中获取）
-		// 使用 GetSkillInfo() 获取包含自动提取 Commands 的完整信息
-		availableSkills := []types.SkillInfo{
-			baidu_baike.GetSkillInfo(),
-			baidu_search.GetSkillInfo(),
-		}
-
-		// 构建选项列表（显示中文名称、原名字和版本号）
-		var options []ui.Option
-		for _, skill := range availableSkills {
-			display := fmt.Sprintf("%s [%s] (v%s)", skill.Description, skill.Name, skill.Version)
-			options = append(options, ui.Option{
-				Display: display,
-				Value:   skill.Name,
-			})
-		}
-
-		// 多选交互
-		selectedSkillNames, err := ui.RunMultiSelect("选择要生成的 skill", options)
-		if err != nil {
-			cmd.Printf("错误：%v\n", err)
-			return
-		}
-
-		if len(selectedSkillNames) == 0 {
-			cmd.Println("未选择任何 skill")
-			return
-		}
-
-		// 询问是否是 picoclaw
-		isPicoclaw := ui.RunConfirm("是否为 PicoClaw 生成 .skill-origin.json 文件？", false)
-
-		// 获取输出目录（从配置文件）
-		outputDir := config.GetSkillsPath()
-		if outputDir == "" {
-			cmd.Println("错误: 未配置 skills.path，请使用 'dtskills config set skills.path <路径>' 设置")
-			return
-		}
-
-		// 创建打印机
-		p := ui.NewPrinter(cmd.OutOrStdout())
-
-		// 显示摘要并确认
-		p.Println()
-		p.Title("📋 生成摘要")
-		p.Println()
-		p.Println("将要生成以下 skill：")
-		for _, skill := range selectedSkillNames {
-			p.Printf("  ✓ %s\n", skill)
-		}
-		p.Println()
-		p.Printf("输出目录: %s\n", outputDir)
-		p.Printf("PicoClaw 模式: %s\n", map[bool]string{true: "是", false: "否"}[isPicoclaw])
-
-		if !ui.RunConfirm("确认生成？", false) {
-			cmd.Println("已取消生成")
-			return
-		}
-
-		// 生成结果记录
-		results := make(map[string]error)
-
-		// 为每个选择的 skill 生成文件
-		for _, skillName := range selectedSkillNames {
-			// 查找对应的 skillInfo
-			var skillInfo types.SkillInfo
-			for _, skill := range availableSkills {
-				if skill.Name == skillName {
-					skillInfo = skill
-					break
-				}
-			}
-
-			// 生成 skill，传入 CLI 名称
-			err := generator.GenerateSkill(skillInfo, outputDir, isPicoclaw, types.ProjectName)
-			results[skillName] = err
-		}
-
-		// 显示结果
-		p.Println()
-		successCount := 0
-		failCount := 0
-		for skill, err := range results {
-			if err != nil {
-				p.Printf("  ✗ %s: %s\n", skill, err)
-				failCount++
-			} else {
-				p.Printf("  ✓ %s: 生成成功\n", skill)
-				successCount++
-			}
-		}
-		p.Println()
-		if failCount == 0 {
-			p.Title(fmt.Sprintf("✅ 全部 %d 个 skill 生成完成！", successCount))
-		} else {
-			p.Printf("%s (成功: %d, 失败: %d)\n",
-				ui.SubtleStyle.Render("⚠️ 部分 skill 生成失败"),
-				successCount, failCount)
-		}
-	},
+	Run:   runGenerate,
 }
 
 var listCmd = &cobra.Command{
