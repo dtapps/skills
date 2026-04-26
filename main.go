@@ -6,10 +6,12 @@ import (
 	"path/filepath"
 
 	"github.com/dtapp/skills/ansi"
+	"github.com/dtapp/skills/cmd"
 	"github.com/dtapp/skills/config"
 	"github.com/dtapp/skills/generator"
 	"github.com/dtapp/skills/skills/baidu_baike"
 	"github.com/dtapp/skills/skills/baidu_search"
+	"github.com/dtapp/skills/stats"
 	"github.com/dtapp/skills/types"
 	"github.com/dtapp/skills/ui"
 	"github.com/dtapp/skills/updater"
@@ -369,10 +371,11 @@ func main() {
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(upgradeCmd)
 	rootCmd.AddCommand(configCmd)
+	rootCmd.AddCommand(cmd.NewStatsCmd())
 
-	// 添加 skill 子命令
-	rootCmd.AddCommand(baidu_baike.NewBaiduBaikeCmd())
-	rootCmd.AddCommand(baidu_search.NewBaiduSearchCmd())
+	// 添加 skill 子命令（包装统计）
+	rootCmd.AddCommand(stats.WrapSkillCommands(baidu_baike.SkillInfo.Name, baidu_baike.NewBaiduBaikeCmd()))
+	rootCmd.AddCommand(stats.WrapSkillCommands(baidu_search.SkillInfo.Name, baidu_search.NewBaiduSearchCmd()))
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
