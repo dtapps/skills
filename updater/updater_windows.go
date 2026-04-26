@@ -48,51 +48,66 @@ func needElevation(targetPath string) bool {
 }
 
 // updateWithElevation 使用提升的权限更新
+// Windows 特殊处理：将新文件下载到临时位置，然后通过批处理脚本替换
 func updateWithElevation(reader io.Reader, targetPath string) error {
-	// 下载到临时文件
-	tmpFile, err := os.CreateTemp("", "dtskills-update-*.exe")
+	// 使用系统临时目录
+	tempDir := os.TempDir()
+
+	// 创建固定的临时文件名
+	timestamp := time.Now().Unix()
+	newExeName := fmt.Sprintf("dtskills_new_%d.exe", timestamp)
+	scriptName := fmt.Sprintf("dtskills_update_%d.bat", timestamp)
+
+	newExePath := filepath.Join(tempDir, newExeName)
+	scriptPath := filepath.Join(tempDir, scriptName)
+
+	// 下载新文件到临时位置
+	newExeFile, err := os.Create(newExePath)
 	if err != nil {
 		return fmt.Errorf("创建临时文件失败: %w", err)
 	}
 
-	fmt.Printf("下载位置: %s\n", tmpFile.Name())
+	fmt.Printf("下载位置: %s\n", newExePath)
 
-	if _, err := io.Copy(tmpFile, reader); err != nil {
-		_ = tmpFile.Close()
-		_ = os.Remove(tmpFile.Name())
+	if _, err := io.Copy(newExeFile, reader); err != nil {
+		_ = newExeFile.Close()
+		_ = os.Remove(newExePath)
 		return fmt.Errorf("写入临时文件失败: %w", err)
 	}
-	if err := tmpFile.Close(); err != nil {
-		_ = os.Remove(tmpFile.Name())
+	if err := newExeFile.Close(); err != nil {
+		_ = os.Remove(newExePath)
 		return fmt.Errorf("关闭临时文件失败: %w", err)
 	}
 
 	// 创建升级脚本
-	scriptPath := tmpFile.Name() + ".bat"
 	// 使用 CRLF 换行符，Windows 批处理必需
+	// chcp 936 设置 GBK 编码，确保中文正常显示
 	scriptContent := "@echo off\r\n" +
+		"chcp 936 >nul\r\n" +
 		"echo 等待原程序退出...\r\n" +
 		":wait_loop\r\n" +
 		"timeout /t 1 /nobreak >nul\r\n" +
-		"move /Y \"" + tmpFile.Name() + "\" \"" + targetPath + "\" >nul 2>&1\r\n" +
+		"move /Y \"" + newExePath + "\" \"" + targetPath + "\" >nul 2>&1\r\n" +
 		"if errorlevel 1 (\r\n" +
+		"    echo 文件被占用，继续等待...\r\n" +
 		"    goto :wait_loop\r\n" +
 		")\r\n" +
 		"echo 升级成功!\r\n" +
-		"del \"%~f0\"\r\n" +
-		"start \"\" \"" + targetPath + "\"\r\n"
+		"echo 正在启动新版本...\r\n" +
+		"start \"\" \"" + targetPath + "\"\r\n" +
+		"del \"" + scriptPath + "\"\r\n"
 
 	// 将脚本内容转换为 GBK 编码，避免中文乱码
 	encoder := simplifiedchinese.GBK.NewEncoder()
 	scriptBytes, _, err := transform.Bytes(encoder, []byte(scriptContent))
 	if err != nil {
-		_ = os.Remove(tmpFile.Name())
+		_ = os.Remove(newExePath)
 		return fmt.Errorf("编码转换失败: %w", err)
 	}
 
-	// #nosec G703 - scriptPath 是程序内部生成的临时脚本路径
+	// #nosec G304 G703 - scriptPath 是程序内部生成的临时脚本路径，非用户输入
 	if err := os.WriteFile(scriptPath, scriptBytes, 0600); err != nil {
-		_ = os.Remove(tmpFile.Name())
+		_ = os.Remove(newExePath)
 		return fmt.Errorf("创建升级脚本失败: %w", err)
 	}
 
@@ -102,13 +117,14 @@ func updateWithElevation(reader io.Reader, targetPath string) error {
 	fmt.Println("========================================")
 
 	// 启动升级脚本并退出当前程序
+	// 使用 cmd /c 直接执行批处理脚本
 	// #nosec G204 - cmd 是系统命令，scriptPath 是程序内部生成的
-	cmd := exec.Command("cmd", "/c", "start", "", scriptPath)
+	cmd := exec.Command("cmd", "/c", scriptPath)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
-		HideWindow: true,
+		HideWindow: false, // 显示窗口，方便调试
 	}
 	if err := cmd.Start(); err != nil {
-		_ = os.Remove(tmpFile.Name())
+		_ = os.Remove(newExePath)
 		_ = os.Remove(scriptPath)
 		return fmt.Errorf("启动升级脚本失败: %w", err)
 	}
