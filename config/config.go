@@ -11,6 +11,25 @@ import (
 	"github.com/spf13/viper"
 )
 
+// resolveWorkDir 解析工作目录（不依赖 viper 状态）
+// 优先级：DTSKILLS_WORK_DIR > 用户配置目录 > 当前目录
+func resolveWorkDir() string {
+	// 检查环境变量
+	workDir := os.Getenv(strings.ToUpper(types.ProjectName) + "_WORK_DIR")
+	if workDir != "" {
+		return workDir
+	}
+
+	// 使用用户配置目录
+	configDir, err := os.UserConfigDir()
+	if err == nil {
+		return filepath.Join(configDir, types.ProjectName)
+	}
+
+	// 默认当前目录
+	return "."
+}
+
 // LoadConfig 加载配置文件
 func LoadConfig() error {
 	// 配置文件名称
@@ -18,22 +37,11 @@ func LoadConfig() error {
 	// 配置文件类型
 	// viper.SetConfigType("yaml")
 
-	// 检查是否通过环境变量指定了配置文件路径
-	configPath := os.Getenv(strings.ToUpper(types.ProjectName) + "_CONFIG")
-	if configPath != "" {
-		viper.SetConfigFile(configPath)
-	} else {
-		// 配置文件搜索路径
-		// 当前目录
-		viper.AddConfigPath(".")
+	// 获取工作目录
+	workDir := resolveWorkDir()
 
-		// 跨平台标准配置目录
-		configDir, err := os.UserConfigDir()
-		if err == nil {
-			projectConfigDir := filepath.Join(configDir, types.ProjectName)
-			viper.AddConfigPath(projectConfigDir)
-		}
-	}
+	// 添加工作目录到配置搜索路径
+	viper.AddConfigPath(workDir)
 
 	// 自动读取环境变量
 	viper.AutomaticEnv()
@@ -108,25 +116,15 @@ func InitConfig() (string, error) {
 		return viper.ConfigFileUsed(), nil
 	}
 
-	// 尝试在用户配置目录创建
-	configDir, err := os.UserConfigDir()
-	if err != nil {
-		// 如果无法获取用户配置目录，则在当前目录创建
-		configPath := "config.yaml"
-		viper.SetConfigFile(configPath)
-		if err := viper.WriteConfigAs(configPath); err != nil {
-			return "", fmt.Errorf("创建配置文件失败: %w", err)
-		}
-		return configPath, nil
+	// 使用 resolveWorkDir 获取工作目录
+	workDir := resolveWorkDir()
+
+	// 确保工作目录存在
+	if err := os.MkdirAll(workDir, 0755); err != nil {
+		return "", fmt.Errorf("创建工作目录失败: %w", err)
 	}
 
-	// 在用户配置目录创建
-	projectConfigDir := filepath.Join(configDir, types.ProjectName)
-	if err := os.MkdirAll(projectConfigDir, 0755); err != nil {
-		return "", fmt.Errorf("创建配置目录失败: %w", err)
-	}
-
-	configPath := filepath.Join(projectConfigDir, "config.yaml")
+	configPath := filepath.Join(workDir, "config.yaml")
 	viper.SetConfigFile(configPath)
 	if err := viper.WriteConfigAs(configPath); err != nil {
 		return "", fmt.Errorf("创建配置文件失败: %w", err)
@@ -154,4 +152,29 @@ func All() map[string]any {
 // GetConfigFile 获取当前使用的配置文件路径
 func GetConfigFile() string {
 	return viper.ConfigFileUsed()
+}
+
+// GetWorkDir 获取工作目录
+// 优先级：DTSKILLS_WORK_DIR > 配置文件所在目录 > 用户配置目录 > 当前目录
+func GetWorkDir() string {
+	// 检查环境变量
+	workDir := os.Getenv(strings.ToUpper(types.ProjectName) + "_WORK_DIR")
+	if workDir != "" {
+		return workDir
+	}
+
+	// 使用配置文件所在目录
+	configFile := viper.ConfigFileUsed()
+	if configFile != "" {
+		return filepath.Dir(configFile)
+	}
+
+	// 使用用户配置目录
+	configDir, err := os.UserConfigDir()
+	if err == nil {
+		return filepath.Join(configDir, types.ProjectName)
+	}
+
+	// 默认当前目录
+	return "."
 }

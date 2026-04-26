@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dtapp/skills/types"
+	"github.com/dtapp/skills/config"
 )
 
 const (
@@ -76,17 +76,13 @@ func GetManager() (*Manager, error) {
 
 // newManager 创建新的统计管理器
 func newManager() (*Manager, error) {
-	configDir, err := os.UserConfigDir()
-	if err != nil {
-		return nil, fmt.Errorf("获取配置目录失败: %w", err)
+	// 使用工作目录存储统计数据
+	workDir := config.GetWorkDir()
+	if err := os.MkdirAll(workDir, 0755); err != nil {
+		return nil, fmt.Errorf("创建工作目录失败: %w", err)
 	}
 
-	projectConfigDir := filepath.Join(configDir, types.ProjectName)
-	if err := os.MkdirAll(projectConfigDir, 0755); err != nil {
-		return nil, fmt.Errorf("创建配置目录失败: %w", err)
-	}
-
-	filePath := filepath.Join(projectConfigDir, statsFileName)
+	filePath := filepath.Join(workDir, statsFileName)
 
 	m := &Manager{
 		data: &StatsData{

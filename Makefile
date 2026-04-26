@@ -2,8 +2,63 @@
 ## 变量定义
 #####################
 
+# 二进制文件名
 BINARY_NAME := dtskills
+
+# 构建目录
 BUILD_DIR := dist
+
+# 工作目录（配置文件和统计数据都存储在这里）
+DTSKILLS_WORK_DIR = ./.dtskills
+
+#####################
+## 开发工具
+#####################
+
+# 生成技能包
+.PHONY: generate
+generate:
+	@echo "[生成] 生成技能包..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . generate
+
+#####################
+## 检查相关
+#####################
+
+# 安装依赖
+.PHONY: deps
+deps:
+	@echo "[依赖] 安装/更新依赖..."
+	go version
+	go get -u ./...
+	go mod tidy
+	go mod verify
+	@echo "✓ 依赖安装完成"
+
+# 定义 Lint 过程中需要激活的 Go Build Tags
+LINT_TAGS = goolm,stdjson
+
+check:
+	@echo "[Check] 自动语法转换与格式化..."
+	go fix ./...
+	go fmt ./...
+	@echo "[Check] 运行 golangci-lint 深度扫描 (Tags: $(LINT_TAGS))..."
+	@echo "  -> Linux 平台 (amd64)"
+	GOOS=linux GOARCH=amd64 golangci-lint run ./... \
+		--build-tags $(LINT_TAGS) \
+		--timeout 5m \
+		--fix
+	@echo "  -> macOS 平台 (arm64)"
+	GOOS=darwin GOARCH=arm64 golangci-lint run ./... \
+		--build-tags $(LINT_TAGS) \
+		--timeout 5m \
+		--fix
+	@echo "  -> Windows 平台 (amd64)"
+	GOOS=windows GOARCH=amd64 golangci-lint run ./... \
+		--build-tags $(LINT_TAGS) \
+		--timeout 5m \
+		--fix
 
 #####################
 ## 构建相关
@@ -175,83 +230,6 @@ build-darwin-arm64:
 	@echo "[构建] macOS Apple Silicon (M1/M2/M3 芯片)"
 	GOOS=darwin GOARCH=arm64 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 .
 	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64)
-
-#####################
-## 检查相关
-#####################
-
-# 定义 Lint 过程中需要激活的 Go Build Tags
-LINT_TAGS = goolm,stdjson
-
-check:
-	@echo "[Check] 自动语法转换与格式化..."
-	go fix ./...
-	go fmt ./...
-	@echo "[Check] 运行 golangci-lint 深度扫描 (Tags: $(LINT_TAGS))..."
-	@echo "  -> Linux 平台 (amd64)"
-	GOOS=linux GOARCH=amd64 golangci-lint run ./... \
-		--build-tags $(LINT_TAGS) \
-		--timeout 5m \
-		--fix
-	@echo "  -> macOS 平台 (arm64)"
-	GOOS=darwin GOARCH=arm64 golangci-lint run ./... \
-		--build-tags $(LINT_TAGS) \
-		--timeout 5m \
-		--fix
-	@echo "  -> Windows 平台 (amd64)"
-	GOOS=windows GOARCH=amd64 golangci-lint run ./... \
-		--build-tags $(LINT_TAGS) \
-		--timeout 5m \
-		--fix
-
-#####################
-## 测试相关
-#####################
-
-# 配置文件路径
-DTSKILLS_CONFIG = ./config.yaml
-
-# 运行测试
-.PHONY: test
-test:
-	@echo "[测试] 运行单元测试..."
-	go test -v ./...
-
-# 运行百度百科搜索测试
-.PHONY: test-baike
-test-baike:
-	@echo "[测试] 百度百科搜索..."
-	DTSKILLS_CONFIG=$(DTSKILLS_CONFIG) go run . baidu-baike search -k 刘德华
-
-# 运行百度搜索测试
-.PHONY: test-search
-test-search:
-	@echo "[测试] 百度搜索..."
-	DTSKILLS_CONFIG=$(DTSKILLS_CONFIG) go run . baidu-search search -q 人工智能 -c 10 -f pd
-
-# 运行所有测试命令
-.PHONY: test-all
-test-all: test-baike test-search
-	@echo "✓ 所有测试完成"
-
-#####################
-## 开发工具
-#####################
-
-# 安装依赖
-.PHONY: deps
-deps:
-	@echo "[依赖] 安装/更新依赖..."
-	go version
-	go get -u ./...
-	go mod tidy
-	@echo "✓ 依赖安装完成"
-
-# 生成技能包
-.PHONY: generate
-generate:
-	@echo "[生成] 生成技能包..."
-	DTSKILLS_CONFIG=$(DTSKILLS_CONFIG) go run . generate
 
 #####################
 ## 打包 (deb/rpm)
