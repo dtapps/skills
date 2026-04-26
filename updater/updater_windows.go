@@ -10,6 +10,9 @@ import (
 	"path/filepath"
 	"syscall"
 	"time"
+
+	"golang.org/x/text/encoding/simplifiedchinese"
+	"golang.org/x/text/transform"
 )
 
 // binaryExt 返回二进制文件扩展名
@@ -63,24 +66,28 @@ func updateWithElevation(reader io.Reader, targetPath string) error {
 
 	// 创建升级脚本
 	scriptPath := tmpFile.Name() + ".bat"
-	scriptContent := fmt.Sprintf(`@echo off
-chcp 65001 >nul
-echo 等待原程序退出...
-timeout /t 2 /nobreak >nul
-echo 正在替换文件...
-copy /Y "%s" "%s"
-if errorlevel 1 (
-    echo 替换失败，请手动执行:
-    echo copy /Y "%s" "%s"
-    pause
-    exit /b 1
-)
-echo 升级成功!
-del "%%~f0"
-"%s"
-`, tmpFile.Name(), targetPath, tmpFile.Name(), targetPath, targetPath)
+	// 使用 CRLF 换行符，Windows 批处理必需
+	scriptContent := "@echo off\r\n" +
+		"echo 等待原程序退出...\r\n" +
+		":wait_loop\r\n" +
+		"timeout /t 1 /nobreak >nul\r\n" +
+		"move /Y \"" + tmpFile.Name() + "\" \"" + targetPath + "\" >nul 2>&1\r\n" +
+		"if errorlevel 1 (\r\n" +
+		"    goto :wait_loop\r\n" +
+		")\r\n" +
+		"echo 升级成功!\r\n" +
+		"del \"%~f0\"\r\n" +
+		"start \"\" \"" + targetPath + "\"\r\n"
 
-	if err := os.WriteFile(scriptPath, []byte(scriptContent), 0644); err != nil {
+	// 将脚本内容转换为 GBK 编码，避免中文乱码
+	encoder := simplifiedchinese.GBK.NewEncoder()
+	scriptBytes, _, err := transform.Bytes(encoder, []byte(scriptContent))
+	if err != nil {
+		_ = os.Remove(tmpFile.Name())
+		return fmt.Errorf("编码转换失败: %w", err)
+	}
+
+	if err := os.WriteFile(scriptPath, scriptBytes, 0644); err != nil {
 		_ = os.Remove(tmpFile.Name())
 		return fmt.Errorf("创建升级脚本失败: %w", err)
 	}

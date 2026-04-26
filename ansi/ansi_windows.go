@@ -10,12 +10,20 @@ import (
 
 // EnableANSI 在 Windows 上启用 ANSI 转义序列支持
 func EnableANSI() {
+	kernel32 := syscall.NewLazyDLL("kernel32.dll")
+
+	// 设置 UTF-8 代码页以支持 Unicode 字符
+	setConsoleCP := kernel32.NewProc("SetConsoleCP")
+	setConsoleOutputCP := kernel32.NewProc("SetConsoleOutputCP")
+	// 65001 是 UTF-8 代码页
+	setConsoleCP.Call(65001)
+	setConsoleOutputCP.Call(65001)
+
 	// 获取标准输出句柄
 	handle := syscall.Handle(os.Stdout.Fd())
 
 	// 获取当前控制台模式
 	var mode uint32
-	kernel32 := syscall.NewLazyDLL("kernel32.dll")
 	getConsoleMode := kernel32.NewProc("GetConsoleMode")
 	setConsoleMode := kernel32.NewProc("SetConsoleMode")
 
