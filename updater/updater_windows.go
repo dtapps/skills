@@ -62,6 +62,7 @@ func updateWithElevation(reader io.Reader, targetPath string) error {
 	scriptPath := filepath.Join(tempDir, scriptName)
 
 	// 下载新文件到临时位置
+	// #nosec G304 - newExePath 是程序内部生成的临时文件路径，非用户输入
 	newExeFile, err := os.Create(newExePath)
 	if err != nil {
 		return fmt.Errorf("创建临时文件失败: %w", err)
