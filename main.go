@@ -374,8 +374,8 @@ func main() {
 	rootCmd.AddCommand(cmd.NewStatsCmd())
 
 	// 添加 skill 子命令（包装统计）
-	rootCmd.AddCommand(stats.WrapSkillCommands(baidu_baike.SkillInfo.Name, baidu_baike.NewBaiduBaikeCmd()))
-	rootCmd.AddCommand(stats.WrapSkillCommands(baidu_search.SkillInfo.Name, baidu_search.NewBaiduSearchCmd()))
+	rootCmd.AddCommand(stats.WrapSkillCommands(baidu_baike.NewBaiduBaikeCmd()))
+	rootCmd.AddCommand(stats.WrapSkillCommands(baidu_search.NewBaiduSearchCmd()))
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)

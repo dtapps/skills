@@ -81,10 +81,11 @@ func recordUsage(skillName, commandName string, args []string, fn func() error) 
 }
 
 // WrapSkillCommands 包装技能命令组
-func WrapSkillCommands(skillName string, cmd *cobra.Command) *cobra.Command {
+// skillName 从 cmd.Name() 自动获取
+func WrapSkillCommands(cmd *cobra.Command) *cobra.Command {
 	// 为每个子命令添加统计
 	for _, subCmd := range cmd.Commands() {
-		WrapCommand(skillName, subCmd)
+		WrapCommand(cmd.Name(), subCmd)
 	}
 	return cmd
 }

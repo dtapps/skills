@@ -5,101 +5,60 @@ import (
 	"fmt"
 
 	"github.com/dtapp/skills/config"
+	"github.com/dtapp/skills/skills"
 	"github.com/dtapp/skills/types"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 )
 
-// SkillInfo 技能配置信息
-var SkillInfo = types.SkillInfo{
-	Name:        "baidu-search",
-	Version:     "1.0.0",
-	Author:      "dtapp",
-	Description: "通过百度搜索 API 进行网络搜索",
-	Homepage:    "https://cnb.cool/dtapp/skills",
+// BaiduSearchSkill 百度搜索技能
+type BaiduSearchSkill struct {
+	cmd *cobra.Command
 }
 
-// GetSkillInfo 获取完整的 SkillInfo（包含自动提取的 Commands）
-func GetSkillInfo() types.SkillInfo {
-	info := SkillInfo
-	info.Commands = extractCommands()
-	return info
+// 确保实现了 Skill 接口
+var _ skills.Skill = (*BaiduSearchSkill)(nil)
+
+// NewBaiduSearchSkill 创建百度搜索技能实例
+func NewBaiduSearchSkill() *BaiduSearchSkill {
+	skill := &BaiduSearchSkill{}
+	skill.cmd = skill.createCommand()
+	return skill
 }
 
-// extractCommands 从 cobra.Command 提取 Commands 信息
-func extractCommands() []types.Command {
-	cmd := NewBaiduSearchCmd()
-	var commands []types.Command
+// GetCommand 获取技能的 cobra.Command
+func (s *BaiduSearchSkill) GetCommand() *cobra.Command {
+	return s.cmd
+}
 
-	for _, subCmd := range cmd.Commands() {
-		command := types.Command{
-			Name:        subCmd.Name(),
-			Description: subCmd.Short,
-			Usage:       fmt.Sprintf("%s %s %s", types.ProjectName, cmd.Name(), subCmd.Use),
-			Flags:       extractFlags(subCmd),
-		}
-		commands = append(commands, command)
+// GetInfo 获取技能元数据
+func (s *BaiduSearchSkill) GetInfo() types.SkillInfo {
+	return types.SkillInfo{
+		Name:        "baidu-search",
+		Version:     "1.0.0",
+		Author:      "dtapp",
+		Description: "通过百度搜索 API 进行网络搜索",
+		Homepage:    "https://cnb.cool/dtapp/skills",
 	}
-
-	return commands
 }
 
-// extractFlags 从 cobra.Command 提取 Flags 信息
-func extractFlags(cmd *cobra.Command) []types.Flag {
-	var flags []types.Flag
-
-	cmd.Flags().VisitAll(func(f *pflag.Flag) {
-		flag := types.Flag{
-			Name:        f.Name,
-			Shorthand:   f.Shorthand,
-			Description: f.Usage,
-			Default:     f.DefValue,
-		}
-		// 检查是否是必填参数 (通过 Annotations 判断)
-		if f.Annotations != nil {
-			if _, ok := f.Annotations["cobra_annotation_bash_completion_one_required_flag"]; ok {
-				flag.Required = true
-			}
-		}
-		flags = append(flags, flag)
-	})
-
-	return flags
-}
-
-// NewBaiduSearchCmd 创建百度搜索子命令
-func NewBaiduSearchCmd() *cobra.Command {
+// createCommand 创建命令定义（只定义一次）
+func (s *BaiduSearchSkill) createCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   SkillInfo.Name,
-		Short: SkillInfo.Description,
-		Long:  fmt.Sprintf("%s v%s\n作者: %s\n主页: %s", SkillInfo.Description, SkillInfo.Version, SkillInfo.Author, SkillInfo.Homepage),
+		Use:   "baidu-search",
+		Short: "通过百度搜索 API 进行网络搜索",
+		Long:  fmt.Sprintf("通过百度搜索 API 进行网络搜索 v%s\n作者: %s\n主页: %s", "1.0.0", "dtapp", "https://cnb.cool/dtapp/skills"),
 	}
 
 	// 添加搜索子命令
-	cmd.AddCommand(NewSearchCmd())
-	cmd.AddCommand(NewVersionCmd())
+	cmd.AddCommand(s.createSearchCmd())
+	cmd.AddCommand(s.createVersionCmd())
 
 	return cmd
 }
 
-// NewVersionCmd 创建版本信息命令
-func NewVersionCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "version",
-		Short: "显示版本信息",
-		Run: func(cmd *cobra.Command, args []string) {
-			cmd.Printf("技能名称: %s\n", SkillInfo.Name)
-			cmd.Printf("版本号: %s\n", SkillInfo.Version)
-			cmd.Printf("作者: %s\n", SkillInfo.Author)
-			cmd.Printf("描述: %s\n", SkillInfo.Description)
-			cmd.Printf("主页: %s\n", SkillInfo.Homepage)
-		},
-	}
-}
-
-// NewSearchCmd 创建百度搜索命令
-func NewSearchCmd() *cobra.Command {
+// createSearchCmd 创建搜索子命令
+func (s *BaiduSearchSkill) createSearchCmd() *cobra.Command {
 	var (
 		query     string
 		count     int
@@ -110,7 +69,7 @@ func NewSearchCmd() *cobra.Command {
 		Use:   "search",
 		Short: "执行百度搜索",
 		Run: func(cmd *cobra.Command, args []string) {
-			cmd.Printf("正在百度搜索：%s\n", query)
+			cmd.Printf("正在搜索: %s\n", query)
 
 			// 获取百度 API Key
 			apiKey := config.GetBaiduAPIKey()
@@ -153,4 +112,32 @@ func NewSearchCmd() *cobra.Command {
 	_ = cmd.MarkFlagRequired("query")
 
 	return cmd
+}
+
+// createVersionCmd 创建版本信息命令
+func (s *BaiduSearchSkill) createVersionCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "version",
+		Short: "显示版本信息",
+		Run: func(cmd *cobra.Command, args []string) {
+			cmd.Printf("技能名称: baidu-search\n")
+			cmd.Printf("版本号: 1.0.0\n")
+			cmd.Printf("作者: dtapp\n")
+			cmd.Printf("描述: 通过百度搜索 API 进行网络搜索\n")
+			cmd.Printf("主页: https://cnb.cool/dtapp/skills\n")
+		},
+	}
+}
+
+// GetSkillInfo 获取完整的 SkillInfo（包含自动提取的 Commands）
+// 这是为了兼容现有代码的辅助函数
+func GetSkillInfo() types.SkillInfo {
+	skill := NewBaiduSearchSkill()
+	return skills.ExtractSkillInfo(skill)
+}
+
+// NewBaiduSearchCmd 创建百度搜索子命令（为了兼容现有代码）
+func NewBaiduSearchCmd() *cobra.Command {
+	skill := NewBaiduSearchSkill()
+	return skill.GetCommand()
 }
