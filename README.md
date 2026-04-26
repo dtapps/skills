@@ -129,6 +129,106 @@ dtskills generate
 ./dtskills baidu-search search -q 2025年新闻 -f 2025-01-01to2025-12-31
 ```
 
+### 自动补全
+
+支持为 Bash、Zsh、Fish 和 PowerShell 生成自动补全脚本。
+
+#### Bash
+
+**临时使用**（当前终端）：
+```bash
+source <(dtskills completion bash)
+```
+
+**永久安装（用户级）**：
+```bash
+# 创建补全目录
+mkdir -p ~/.local/share/bash-completion/completions
+
+# 生成补全脚本
+dtskills completion bash > ~/.local/share/bash-completion/completions/dtskills
+
+# 重新加载配置
+source ~/.bashrc
+```
+
+**永久安装（系统级）**：
+```bash
+# Debian/Ubuntu
+sudo dtskills completion bash > /etc/bash_completion.d/dtskills
+
+# RHEL/CentOS/Fedora
+sudo dtskills completion bash > /etc/bash_completion.d/dtskills
+```
+
+#### Zsh
+
+**临时使用**：
+```bash
+source <(dtskills completion zsh)
+```
+
+**永久安装（使用 oh-my-zsh）**：
+```bash
+mkdir -p ~/.oh-my-zsh/completions
+dtskills completion zsh > ~/.oh-my-zsh/completions/_dtskills
+```
+
+**永久安装（系统级）**：
+```bash
+sudo dtskills completion zsh > /usr/share/zsh/site-functions/_dtskills
+```
+
+#### Fish
+
+**临时使用**：
+```bash
+dtskills completion fish | source
+```
+
+**永久安装**：
+```bash
+mkdir -p ~/.config/fish/completions
+dtskills completion fish > ~/.config/fish/completions/dtskills.fish
+```
+
+#### PowerShell
+
+**临时使用**：
+```powershell
+dtskills completion powershell | Out-String | Invoke-Expression
+```
+
+**永久安装**：
+```powershell
+# 创建补全脚本目录
+New-Item -Path $PROFILE -Type File -Force
+
+# 添加补全脚本到配置文件
+dtskills completion powershell >> $PROFILE
+```
+
+#### 更新补全脚本
+
+当你升级 `dtskills` 或添加新命令后，需要重新生成补全脚本：
+
+```bash
+# Bash（根据之前的安装方式选择）
+dtskills completion bash > ~/.local/share/bash-completion/completions/dtskills
+# 或
+sudo dtskills completion bash > /etc/bash_completion.d/dtskills
+
+# Zsh
+dtskills completion zsh > ~/.oh-my-zsh/completions/_dtskills
+# 或
+sudo dtskills completion zsh > /usr/share/zsh/site-functions/_dtskills
+
+# Fish
+dtskills completion fish > ~/.config/fish/completions/dtskills.fish
+```
+
+然后重新加载 shell 配置或重新打开终端即可。
+
 ### 配置管理
 
 #### 设置配置项
