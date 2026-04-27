@@ -1,5 +1,6 @@
 ---
 name: "{{.Name}}"
+title: "{{.Title}}"
 description: "{{.Description}}"
 {{- if .License }}
 license: "{{.License}}"
@@ -18,7 +19,7 @@ allowed-tools: "{{.AllowedToolsStr}}"
 {{- end }}
 ---
 
-# {{.Name}}
+# {{.Title}}（{{.Name}}）
 
 ## 描述
 

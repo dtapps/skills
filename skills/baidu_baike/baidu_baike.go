@@ -11,6 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// https://console.bce.baidu.com/qianfan/tools/toolsCenter/eb39b6d6-4ce4-498a-91f1-831a8dd38cf9/detail
+
 // BaiduBaikeSkill 百度百科技能
 type BaiduBaikeSkill struct {
 	cmd *cobra.Command
@@ -35,19 +37,21 @@ func (s *BaiduBaikeSkill) GetCommand() *cobra.Command {
 func (s *BaiduBaikeSkill) GetInfo() types.SkillInfo {
 	return types.SkillInfo{
 		Name:        "baidu-baike",
+		Title:       "百度百科",
 		Version:     "1.0.0",
 		Author:      "dtapp",
-		Description: "通过百度百科 API 查询百科内容",
+		Description: "百度百科提供百科官方内容检索服务，帮助用户快速、全面地获取权威的百科信息。支持百科词条义项查询、词条详情查询以及秒懂百科视频获取。适用于AI问答、内容创作、教育教学、知识检索等场景，为模型提供可信的知识支撑。",
 		Homepage:    "https://cnb.cool/dtapp/skills",
 	}
 }
 
 // createCommand 创建命令定义（只定义一次）
 func (s *BaiduBaikeSkill) createCommand() *cobra.Command {
+	info := s.GetInfo()
 	cmd := &cobra.Command{
-		Use:   "baidu-baike",
-		Short: "通过百度百科 API 查询百科内容",
-		Long:  fmt.Sprintf("通过百度百科 API 查询百科内容 v%s\n作者: %s\n主页: %s", "1.0.0", "dtapp", "https://cnb.cool/dtapp/skills"),
+		Use:   info.Name,
+		Short: info.Description,
+		Long:  fmt.Sprintf("%s v%s\n作者: %s\n主页: %s", info.Description, info.Version, info.Author, info.Homepage),
 	}
 
 	// 添加搜索子命令

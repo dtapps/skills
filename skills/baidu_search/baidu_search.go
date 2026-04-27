@@ -11,6 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// https://console.bce.baidu.com/qianfan/tools/toolsCenter/57d4e765-8af5-4ec0-8f9b-47075ec349e0/detail
+
 // BaiduSearchSkill 百度搜索技能
 type BaiduSearchSkill struct {
 	cmd *cobra.Command
@@ -35,19 +37,21 @@ func (s *BaiduSearchSkill) GetCommand() *cobra.Command {
 func (s *BaiduSearchSkill) GetInfo() types.SkillInfo {
 	return types.SkillInfo{
 		Name:        "baidu-search",
+		Title:       "百度搜索",
 		Version:     "1.0.0",
 		Author:      "dtapp",
-		Description: "通过百度搜索 API 进行网络搜索",
+		Description: "百度搜索服务基于百度搜索能力与AI技术，专为生成式AI提供全网实时信息检索服务，具备海量内容站点、高权威性，强时效性，提供全新的搜索体验。",
 		Homepage:    "https://cnb.cool/dtapp/skills",
 	}
 }
 
 // createCommand 创建命令定义（只定义一次）
 func (s *BaiduSearchSkill) createCommand() *cobra.Command {
+	info := s.GetInfo()
 	cmd := &cobra.Command{
-		Use:   "baidu-search",
-		Short: "通过百度搜索 API 进行网络搜索",
-		Long:  fmt.Sprintf("通过百度搜索 API 进行网络搜索 v%s\n作者: %s\n主页: %s", "1.0.0", "dtapp", "https://cnb.cool/dtapp/skills"),
+		Use:   info.Name,
+		Short: info.Description,
+		Long:  fmt.Sprintf("%s v%s\n作者: %s\n主页: %s", info.Description, info.Version, info.Author, info.Homepage),
 	}
 
 	// 添加搜索子命令

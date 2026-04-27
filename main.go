@@ -43,7 +43,7 @@ func runGenerate(cmd *cobra.Command, args []string) {
 	// 构建选项列表（显示中文名称、原名字和版本号）
 	var options []ui.Option
 	for _, skill := range availableSkills {
-		display := fmt.Sprintf("%s [%s] (v%s)", skill.Description, skill.Name, skill.Version)
+		display := fmt.Sprintf("%s [%s] (v%s)", skill.Title, skill.Name, skill.Version)
 		options = append(options, ui.Option{
 			Display: display,
 			Value:   skill.Name,

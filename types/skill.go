@@ -7,6 +7,7 @@ var ProjectName = "dtskills"
 // SkillInfo 技能配置信息
 type SkillInfo struct {
 	Name          string            // 技能名称 (必填, 最多64字符, 小写字母/数字/连字符)
+	Title         string            // 技能标题 (必填, 用户友好的显示名称)
 	Version       string            // 版本号
 	Author        string            // 作者
 	Description   string            // 描述 (必填, 最多1024字符)

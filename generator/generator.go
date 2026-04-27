@@ -36,13 +36,15 @@ func GenerateSkill(skillInfo types.SkillInfo, outputDir string, isPicoclaw bool,
 	}
 
 	// 生成 SKILL.md 文件（带变化检测）
-	if err := generateSkillMd(skillInfo, skillDir, cliName); err != nil {
+	changed, err := generateSkillMd(skillInfo, skillDir, cliName)
+	if err != nil {
 		return fmt.Errorf("生成 SKILL.md 失败: %v", err)
 	}
 
-	// 如果是 picoclaw，生成 .skill-origin.json 文件（如果文件不存在）
+	// 如果是 picoclaw，生成 .skill-origin.json 文件
+	// 当 SKILL.md 有变化时，更新 installed_at 时间戳
 	if isPicoclaw {
-		if err := generateSkillOrigin(skillDir); err != nil {
+		if err := generateSkillOrigin(skillDir, changed); err != nil {
 			return fmt.Errorf("生成 .skill-origin.json 失败: %v", err)
 		}
 	}
@@ -51,7 +53,8 @@ func GenerateSkill(skillInfo types.SkillInfo, outputDir string, isPicoclaw bool,
 }
 
 // generateSkillMd 生成 SKILL.md 文件（带变化检测）
-func generateSkillMd(skillInfo types.SkillInfo, skillDir string, cliName string) error {
+// 返回是否有变化（true 表示文件被更新或创建）
+func generateSkillMd(skillInfo types.SkillInfo, skillDir string, cliName string) (bool, error) {
 	// 将 Version 和 Author 和 Date 加入到 Metadata 中
 	if skillInfo.Metadata == nil {
 		skillInfo.Metadata = make(map[string]string)
@@ -71,17 +74,17 @@ func generateSkillMd(skillInfo types.SkillInfo, skillDir string, cliName string)
 	// 读取嵌入的模板文件
 	templateContent, err := templatesFS.ReadFile("templates/skill.md.tpl")
 	if err != nil {
-		return fmt.Errorf("读取嵌入模板失败: %v", err)
+		return false, fmt.Errorf("读取嵌入模板失败: %v", err)
 	}
 	tmpl, err := template.New("skill.md.tpl").Parse(string(templateContent))
 	if err != nil {
-		return fmt.Errorf("解析模板失败: %v", err)
+		return false, fmt.Errorf("解析模板失败: %v", err)
 	}
 
 	// 生成新的内容到内存
 	var newContent bytes.Buffer
 	if err := tmpl.Execute(&newContent, data); err != nil {
-		return fmt.Errorf("执行模板失败: %v", err)
+		return false, fmt.Errorf("执行模板失败: %v", err)
 	}
 
 	filePath := filepath.Join(skillDir, "SKILL.md")
@@ -93,11 +96,14 @@ func generateSkillMd(skillInfo types.SkillInfo, skillDir string, cliName string)
 		// 文件存在，比较内容（忽略 date 元数据）
 		if contentsEqualIgnoreDate(string(existingContent), newContent.String()) {
 			// 内容相同，跳过写入
-			return nil
+			return false, nil
 		}
 	}
 	// 文件不存在或内容不同，写入新内容
-	return os.WriteFile(filePath, newContent.Bytes(), 0600)
+	if err := os.WriteFile(filePath, newContent.Bytes(), 0600); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // contentsEqualIgnoreDate 比较两个 SKILL.md 内容是否相同（忽略 date 元数据）
@@ -111,12 +117,13 @@ func contentsEqualIgnoreDate(existing, new string) bool {
 	return strings.TrimSpace(existingNormalized) == strings.TrimSpace(newNormalized)
 }
 
-// generateSkillOrigin 生成 .skill-origin.json 文件（仅在文件不存在时创建）
-func generateSkillOrigin(skillDir string) error {
+// generateSkillOrigin 生成 .skill-origin.json 文件
+// 当 changed 为 true 时，更新 installed_at 时间戳；文件不存在时创建
+func generateSkillOrigin(skillDir string, changed bool) error {
 	filePath := filepath.Join(skillDir, ".skill-origin.json")
 
-	// 如果文件已存在，跳过生成，保留原有的 installed_at
-	if _, err := os.Stat(filePath); err == nil {
+	// 如果文件已存在且 SKILL.md 没有变化，跳过生成
+	if _, err := os.Stat(filePath); err == nil && !changed {
 		return nil
 	}
 
