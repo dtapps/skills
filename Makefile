@@ -403,7 +403,7 @@ package-linux-all: package-deb package-rpm
 ## 打包 (Windows MSI)
 #####################
 
-# 生成 wixl 配置文件
+# 生成 wixl 配置文件 - 安装到 System32 目录（已在 PATH 中）
 define generate_wix_config
 	@echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" > $(1).wxs
 	@echo "<Wix xmlns=\"http://schemas.microsoft.com/wix/2006/wi\">" >> $(1).wxs
@@ -411,13 +411,10 @@ define generate_wix_config
 	@echo "    <Package InstallerVersion=\"200\" Compressed=\"yes\" InstallScope=\"perMachine\"/>" >> $(1).wxs
 	@echo "    <Media Id=\"1\" Cabinet=\"media1.cab\" EmbedCab=\"yes\"/>" >> $(1).wxs
 	@echo "    <Directory Id=\"TARGETDIR\" Name=\"SourceDir\">" >> $(1).wxs
-	@echo "      <Directory Id=\"$(2)\">" >> $(1).wxs
-	@echo "        <Directory Id=\"INSTALLDIR\" Name=\"dtskills\">" >> $(1).wxs
-	@echo "          <Component Id=\"MainExecutable\" Guid=\"*\">" >> $(1).wxs
-	@echo "            <File Id=\"dtskills.exe\" Source=\"$(3)\" KeyPath=\"yes\"/>" >> $(1).wxs
-	@echo "            <Environment Id=\"PATH\" Name=\"PATH\" Value=\"[INSTALLDIR];%PATH%\" Permanent=\"no\" Part=\"all\" Action=\"create\" System=\"yes\"/>" >> $(1).wxs
-	@echo "          </Component>" >> $(1).wxs
-	@echo "        </Directory>" >> $(1).wxs
+	@echo "      <Directory Id=\"SystemFolder\" Name=\"System32\">" >> $(1).wxs
+	@echo "        <Component Id=\"MainExecutable\" Guid=\"*\">" >> $(1).wxs
+	@echo "          <File Id=\"dtskills.exe\" Source=\"$(2)\" KeyPath=\"yes\"/>" >> $(1).wxs
+	@echo "        </Component>" >> $(1).wxs
 	@echo "      </Directory>" >> $(1).wxs
 	@echo "    </Directory>" >> $(1).wxs
 	@echo "    <Feature Id=\"MainFeature\" Title=\"dtskills\" Level=\"1\">" >> $(1).wxs
@@ -432,7 +429,7 @@ endef
 package-msi-amd64: build-windows-amd64
 	@echo "[打包] 创建 Windows MSI 包 (AMD64)..."
 	@mkdir -p dist
-	$(call generate_wix_config,dist/dtskills-amd64,ProgramFiles64Folder,dist/dtskills-windows-amd64.exe)
+	$(call generate_wix_config,dist/dtskills-amd64,dist/dtskills-windows-amd64.exe)
 	wixl dist/dtskills-amd64.wxs -o dist/dtskills_amd64.msi
 	@rm -f dist/dtskills-amd64.wxs
 	@echo "✓ MSI 包已创建: dist/dtskills_amd64.msi"
@@ -442,7 +439,7 @@ package-msi-amd64: build-windows-amd64
 package-msi-arm64: build-windows-arm64
 	@echo "[打包] 创建 Windows MSI 包 (ARM64)..."
 	@mkdir -p dist
-	$(call generate_wix_config,dist/dtskills-arm64,ProgramFiles64Folder,dist/dtskills-windows-arm64.exe)
+	$(call generate_wix_config,dist/dtskills-arm64,dist/dtskills-windows-arm64.exe)
 	wixl dist/dtskills-arm64.wxs -o dist/dtskills_arm64.msi
 	@rm -f dist/dtskills-arm64.wxs
 	@echo "✓ MSI 包已创建: dist/dtskills_arm64.msi"
@@ -452,7 +449,7 @@ package-msi-arm64: build-windows-arm64
 package-msi-386: build-windows-386
 	@echo "[打包] 创建 Windows MSI 包 (386)..."
 	@mkdir -p dist
-	$(call generate_wix_config,dist/dtskills-386,ProgramFilesFolder,dist/dtskills-windows-386.exe)
+	$(call generate_wix_config,dist/dtskills-386,dist/dtskills-windows-386.exe)
 	wixl dist/dtskills-386.wxs -o dist/dtskills_386.msi
 	@rm -f dist/dtskills-386.wxs
 	@echo "✓ MSI 包已创建: dist/dtskills_386.msi"
