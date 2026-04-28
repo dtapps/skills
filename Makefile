@@ -365,7 +365,7 @@ build-darwin-arm64:
 	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64)
 
 #####################
-## 打包 (deb/rpm)
+## 打包 (Linux deb/rpm)
 #####################
 
 # 生成 nfpm 临时配置文件（替换变量）
@@ -373,20 +373,20 @@ define generate_nfpm_config
 	@sed -e 's|$${ARCH}|$(1)|g' -e 's|$${VERSION}|$(VERSION)|g' .nfpm.yaml > .nfpm-$(1).yaml
 endef
 
-# 打包 deb
+# 打包 Linux deb
 .PHONY: package-deb
 package-deb: build-linux-amd64
-	@echo "[打包] 创建 deb 包..."
+	@echo "[打包] 创建 Linux deb 包..."
 	@mkdir -p dist
 	$(call generate_nfpm_config,amd64)
 	nfpm package -p deb -f .nfpm-amd64.yaml -t dist/dtskills_amd64.deb
 	@rm -f .nfpm-amd64.yaml
 	@echo "✓ deb 包已创建: dist/dtskills_amd64.deb"
 
-# 打包 rpm
+# 打包 Linux rpm
 .PHONY: package-rpm
 package-rpm: build-linux-amd64
-	@echo "[打包] 创建 rpm 包..."
+	@echo "[打包] 创建 Linux rpm 包..."
 	@mkdir -p dist
 	@cp dist/dtskills-linux-amd64 dist/dtskills-linux-x86_64 2>/dev/null || true
 	$(call generate_nfpm_config,x86_64)
@@ -394,7 +394,70 @@ package-rpm: build-linux-amd64
 	@rm -f .nfpm-x86_64.yaml dist/dtskills-linux-x86_64
 	@echo "✓ rpm 包已创建: dist/dtskills.x86_64.rpm"
 
-# 打包所有 Linux 包
+# 打包所有 Linu deb/rpm 包
 .PHONY: package-linux-all
 package-linux-all: package-deb package-rpm
-	@echo "✓ 所有 Linux 包已创建"
+	@echo "✓ 所有 Linux deb/rpm  包已创建"
+
+#####################
+## 打包 (Windows MSI)
+#####################
+
+# 生成 go-msi 配置文件
+define generate_wix_config
+	@echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" > $(1).wxs
+	@echo "<Wix xmlns=\"http://schemas.microsoft.com/wix/2006/wi\">" >> $(1).wxs
+	@echo "  <Product Id=\"*\" Name=\"dtskills\" Language=\"2052\" Version=\"$(VERSION)\" Manufacturer=\"dtapp\" UpgradeCode=\"6F7C8D9E-0A1B-2C3D-4E5F-6789ABCDEF02\">" >> $(1).wxs
+	@echo "    <Package InstallerVersion=\"200\" Compressed=\"yes\" InstallScope=\"perMachine\" Platform=\"$(2)\"/>" >> $(1).wxs
+	@echo "    <Media Id=\"1\" Cabinet=\"media1.cab\" EmbedCab=\"yes\"/>" >> $(1).wxs
+	@echo "    <Directory Id=\"TARGETDIR\" Name=\"SourceDir\">" >> $(1).wxs
+	@echo "      <Directory Id=\"$(3)\">" >> $(1).wxs
+	@echo "        <Directory Id=\"INSTALLDIR\" Name=\"dtskills\">" >> $(1).wxs
+	@echo "          <Component Id=\"MainExecutable\" Guid=\"*\">" >> $(1).wxs
+	@echo "            <File Id=\"dtskills.exe\" Source=\"$(4)\" KeyPath=\"yes\"/>" >> $(1).wxs
+	@echo "            <Environment Id=\"PATH\" Name=\"PATH\" Value=\"[INSTALLDIR]\" Permanent=\"yes\" Part=\"last\" Action=\"set\" System=\"yes\"/>" >> $(1).wxs
+	@echo "          </Component>" >> $(1).wxs
+	@echo "        </Directory>" >> $(1).wxs
+	@echo "      </Directory>" >> $(1).wxs
+	@echo "    </Directory>" >> $(1).wxs
+	@echo "    <Feature Id=\"MainFeature\" Title=\"dtskills\" Level=\"1\">" >> $(1).wxs
+	@echo "      <ComponentRef Id=\"MainExecutable\"/>" >> $(1).wxs
+	@echo "    </Feature>" >> $(1).wxs
+	@echo "  </Product>" >> $(1).wxs
+	@echo "</Wix>" >> $(1).wxs
+endef
+
+# 打包 Windows MSI (AMD64)
+.PHONY: package-msi-amd64
+package-msi-amd64: build-windows-amd64
+	@echo "[打包] 创建 Windows MSI 包 (AMD64)..."
+	@mkdir -p dist
+	$(call generate_wix_config,dist/dtskills-amd64,x64,ProgramFiles64Folder,dist/dtskills-windows-amd64.exe)
+	wixl dist/dtskills-amd64.wxs -o dist/dtskills_amd64.msi
+	@rm -f dist/dtskills-amd64.wxs
+	@echo "✓ MSI 包已创建: dist/dtskills_amd64.msi"
+
+# 打包 Windows MSI (ARM64)
+.PHONY: package-msi-arm64
+package-msi-arm64: build-windows-arm64
+	@echo "[打包] 创建 Windows MSI 包 (ARM64)..."
+	@mkdir -p dist
+	$(call generate_wix_config,dist/dtskills-arm64,arm64,ProgramFiles64Folder,dist/dtskills-windows-arm64.exe)
+	wixl dist/dtskills-arm64.wxs -o dist/dtskills_arm64.msi
+	@rm -f dist/dtskills-arm64.wxs
+	@echo "✓ MSI 包已创建: dist/dtskills_arm64.msi"
+
+# 打包 Windows MSI (386)
+.PHONY: package-msi-386
+package-msi-386: build-windows-386
+	@echo "[打包] 创建 Windows MSI 包 (386)..."
+	@mkdir -p dist
+	$(call generate_wix_config,dist/dtskills-386,x86,ProgramFilesFolder,dist/dtskills-windows-386.exe)
+	wixl dist/dtskills-386.wxs -o dist/dtskills_386.msi
+	@rm -f dist/dtskills-386.wxs
+	@echo "✓ MSI 包已创建: dist/dtskills_386.msi"
+
+# 打包所有 Windows MSI 包
+.PHONY: package-msi-all
+package-msi-all: package-msi-amd64 package-msi-arm64 package-msi-386
+	@echo "✓ 所有 Windows MSI 包已创建"

@@ -44,7 +44,7 @@
             make check
 
             # 3. 清理并构建/打包项目
-            VERSION=${INTERIOR_VERSION} make build-all package-linux-all
+            VERSION=${INTERIOR_VERSION} make build-all package-linux-all package-msi-all
 
             echo "=============================="
             echo "🎉 处理结束 web_trigger_build_go_project"
