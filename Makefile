@@ -415,7 +415,7 @@ define generate_wix_config
 	@echo "        <Directory Id=\"INSTALLDIR\" Name=\"dtskills\">" >> $(1).wxs
 	@echo "          <Component Id=\"MainExecutable\" Guid=\"*\">" >> $(1).wxs
 	@echo "            <File Id=\"dtskills.exe\" Source=\"$(3)\" KeyPath=\"yes\"/>" >> $(1).wxs
-	@echo "            <Environment Id=\"PATH\" Name=\"PATH\" Value=\"[INSTALLDIR]\" Permanent=\"yes\" Part=\"last\" Action=\"set\" System=\"yes\"/>" >> $(1).wxs
+	@echo "            <Environment Id=\"PATH\" Name=\"PATH\" Value=\"[INSTALLDIR];%PATH%\" Permanent=\"no\" Part=\"all\" Action=\"create\" System=\"yes\"/>" >> $(1).wxs
 	@echo "          </Component>" >> $(1).wxs
 	@echo "        </Directory>" >> $(1).wxs
 	@echo "      </Directory>" >> $(1).wxs
