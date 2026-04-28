@@ -16,25 +16,144 @@ DTSKILLS_WORK_DIR = .
 #####################
 
 # 生成技能包
+# make generate
 .PHONY: generate
 generate:
 	@echo "[生成] 生成技能包..."
 	@mkdir -p $(DTSKILLS_WORK_DIR)
 	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . generate
 
-# 获取配置文件路径
+# 获取 配置文件路径
+# make config-path
 .PHONY: config-path
 config-path:
 	@echo "[配置] 获取配置文件路径..."
 	@mkdir -p $(DTSKILLS_WORK_DIR)
 	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . config path
 
-# 获取统计数据路径
+# 获取 统计数据路径
+# make stats-path
 .PHONY: stats-path
 stats-path:
 	@echo "[统计] 获取统计数据路径..."
 	@mkdir -p $(DTSKILLS_WORK_DIR)
 	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . stats path
+
+# 获取 统计数据路径
+# make stats-list
+.PHONY: stats-list
+stats-list:
+	@echo "[统计] 获取统计数据路径..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . stats list
+
+#####################
+
+# 获取 百度搜索
+# make baidu-search QUERY="人工智能" COUNT=10
+# make baidu-search QUERY="人工智能" COUNT=10 VERBOSE="-v"
+.PHONY: baidu-search
+baidu-search:
+	@echo "[获取] 百度搜索..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . baidu-search search --query "$(QUERY)" --count $(COUNT) $(VERBOSE)
+
+#####################
+
+# 获取 百度百科
+# make baidu-baike KEYWORD="北京"
+# make baidu-baike KEYWORD="北京" VERBOSE="-v"
+.PHONY: baidu-baike
+baidu-baike:
+	@echo "[获取] 百度百科..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . baidu-baike search --key "$(KEYWORD)" $(VERBOSE)
+
+#####################
+
+# 获取 腾讯新闻（搜索）
+# make tencent-news-search QUERY="人工智能"
+# make tencent-news-search QUERY="人工智能" VERBOSE="-v"
+.PHONY: tencent-news-search
+tencent-news-search:
+	@echo "[获取] 腾讯新闻（搜索）..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . tencent-news search --query "$(QUERY)" $(VERBOSE)
+
+# 获取 腾讯新闻（热点）
+# make tencent-news-hot
+# make tencent-news-hot VERBOSE="-v"
+.PHONY: tencent-news-hot
+tencent-news-hot:
+	@echo "[获取] 腾讯新闻（热点）..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . tencent-news hot $(VERBOSE)
+
+# 获取 腾讯新闻（早报）
+# make tencent-news-morning
+# make tencent-news-morning VERBOSE="-v"
+.PHONY: tencent-news-morning
+tencent-news-morning:
+	@echo "[获取] 腾讯新闻（早报）..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . tencent-news morning $(VERBOSE)
+
+# 获取 腾讯新闻（晚报）
+# make tencent-news-evening
+# make tencent-news-evening VERBOSE="-v"
+.PHONY: tencent-news-evening
+tencent-news-evening:
+	@echo "[获取] 腾讯新闻（晚报）..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . tencent-news evening $(VERBOSE)
+
+#####################
+
+# 获取 腾讯天气（当前）
+# make tencent-weather-current ADCODE=110000
+# make tencent-weather-current ADCODE=110000 VERBOSE="-v"
+.PHONY: tencent-weather-current
+tencent-weather-current:
+	@echo "[获取] 腾讯天气（当前）..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . tencent-weather current --adcode "$(ADCODE)" $(VERBOSE)
+
+# 获取 腾讯天气（预报）
+# make tencent-weather-forecast ADCODE=110000 TYPE=forecast_24h
+# make tencent-weather-forecast ADCODE=110000 TYPE=forecast_24h VERBOSE="-v"
+.PHONY: tencent-weather-forecast
+tencent-weather-forecast:
+	@echo "[获取] 腾讯天气（预报）..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . tencent-weather forecast --adcode "$(ADCODE)" --type "$(TYPE)" $(VERBOSE)
+
+# 获取 腾讯天气（空气质量）
+# make tencent-weather-airquality ADCODE=110000 
+# make tencent-weather-airquality ADCODE=110000 VERBOSE="-v"
+.PHONY: tencent-weather-airquality
+tencent-weather-airquality:
+	@echo "[获取] 腾讯天气（空气质量）..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . tencent-weather airquality --adcode "$(ADCODE)" $(VERBOSE)
+
+# 获取 腾讯天气（IP定位获取城市）
+# make tencent-weather-ip2city
+.PHONY: tencent-weather-ip2city
+tencent-weather-ip2city:
+	@echo "[获取] 腾讯天气（IP定位获取城市）..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . tencent-weather ip2city
+
+#####################
+
+# 腾讯较真事实查证
+# make jiaozhen-factcheck-check QUERY="喝柠檬水能抗癌是真的吗"
+# make jiaozhen-factcheck-check QUERY="喝柠檬水能抗癌是真的吗" VERBOSE="-v"
+.PHONY: jiaozhen-factcheck-check
+jiaozhen-factcheck-check:
+	@echo "[查证] 腾讯较真事实查证..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . jiaozhen-factcheck check --query "$(QUERY)" $(VERBOSE)
 
 #####################
 ## 检查相关

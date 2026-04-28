@@ -11,6 +11,8 @@ import (
 	"github.com/dtapp/skills/generator"
 	"github.com/dtapp/skills/skills/baidu_baike"
 	"github.com/dtapp/skills/skills/baidu_search"
+	"github.com/dtapp/skills/skills/tencent_news"
+	"github.com/dtapp/skills/skills/tencent_weather"
 	"github.com/dtapp/skills/stats"
 	"github.com/dtapp/skills/types"
 	"github.com/dtapp/skills/ui"
@@ -38,6 +40,9 @@ func runGenerate(cmd *cobra.Command, args []string) {
 	availableSkills := []types.SkillInfo{
 		baidu_baike.GetSkillInfo(),
 		baidu_search.GetSkillInfo(),
+		tencent_news.GetSkillInfo(),
+		tencent_weather.GetSkillInfo(),
+		// jiaozhen_factcheck.GetSkillInfo(),
 	}
 
 	// 构建选项列表（显示中文名称、原名字和版本号）
@@ -412,6 +417,9 @@ func main() {
 	// 添加 skill 子命令（包装统计）
 	rootCmd.AddCommand(stats.WrapSkillCommands(baidu_baike.NewBaiduBaikeCmd()))
 	rootCmd.AddCommand(stats.WrapSkillCommands(baidu_search.NewBaiduSearchCmd()))
+	rootCmd.AddCommand(stats.WrapSkillCommands(tencent_news.NewTencentNewsCmd()))
+	rootCmd.AddCommand(stats.WrapSkillCommands(tencent_weather.NewTencentWeatherCmd()))
+	// rootCmd.AddCommand(stats.WrapSkillCommands(jiaozhen_factcheck.NewJiaozhenFactCheckCmd()))
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)

@@ -19,12 +19,19 @@ type SkillInfo struct {
 	Commands      []Command         // 命令列表
 }
 
+// OutputField 输出字段信息
+type OutputField struct {
+	Name        string // 字段名
+	Description string // 字段描述
+}
+
 // Command 命令信息
 type Command struct {
-	Name        string // 命令名称
-	Description string // 命令描述
-	Usage       string // 使用示例
-	Flags       []Flag // 命令参数列表
+	Name         string        // 命令名称
+	Description  string        // 命令描述
+	Usage        string        // 使用示例
+	Flags        []Flag        // 命令参数列表
+	OutputFields []OutputField // 命令的输出字段 (可选)
 }
 
 // Flag 命令参数信息

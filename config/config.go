@@ -51,6 +51,7 @@ func LoadConfig() error {
 	viper.SetEnvPrefix(strings.ToUpper(types.ProjectName))
 	// 绑定环境变量
 	_ = viper.BindEnv("api_keys.baidu", "BAIDU_API_KEY")
+	_ = viper.BindEnv("api_keys.tencent_news", "TENCENT_NEWS_API_KEY")
 
 	// 读取配置文件
 	err := viper.ReadInConfig()
@@ -75,6 +76,17 @@ func GetBaiduAPIKey() string {
 	return viper.GetString("api_keys.baidu")
 }
 
+// GetTencentNewsAPIKey 获取腾讯新闻 API Key
+func GetTencentNewsAPIKey() string {
+	return viper.GetString("api_keys.tencent_news")
+}
+
+// IsRestyDebugEnabled 是否开启 Resty Debug 模式
+// 注意：此参数只能从配置文件读取，不能通过环境变量设置
+func IsRestyDebugEnabled() bool {
+	return viper.GetBool("debug.resty")
+}
+
 // GetSkillsPath 获取技能包路径
 func GetSkillsPath() string {
 	return viper.GetString("skills.path")
@@ -83,6 +95,11 @@ func GetSkillsPath() string {
 // SetBaiduAPIKey 设置百度 API Key
 func SetBaiduAPIKey(apiKey string) {
 	viper.Set("api_keys.baidu", apiKey)
+}
+
+// SetTencentNewsAPIKey 设置腾讯新闻 API Key
+func SetTencentNewsAPIKey(apiKey string) {
+	viper.Set("api_keys.tencent_news", apiKey)
 }
 
 // SetSkillsPath 设置技能包路径

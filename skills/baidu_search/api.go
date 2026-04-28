@@ -1,10 +1,8 @@
 package baidu_search
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"regexp"
 	"time"
 )
@@ -54,6 +52,17 @@ type SearchResponse struct {
 	References json.RawMessage `json:"references,omitempty"` // 模型回答详情
 }
 
+// SearchSimpleResult 搜索简洁输出结构体
+type SearchSimpleResult struct {
+	Title   string `json:"title,omitempty" description:"网页标题"`
+	URL     string `json:"url,omitempty" description:"网页地址"`
+	Website string `json:"website,omitempty" description:"站点名称"`
+	Site    string `json:"site,omitempty" description:"站点"`
+	Content string `json:"content,omitempty" description:"网页内容，显示2000字以内的相关信息原文片段"`
+	Date    string `json:"date,omitempty" description:"网页日期"`
+	Type    string `json:"type,omitempty" description:"检索资源类型"`
+}
+
 // SearchOptions 搜索选项
 type SearchOptions struct {
 	Query     string // 搜索关键词
@@ -64,45 +73,33 @@ type SearchOptions struct {
 // DefaultCount 默认返回数量
 const DefaultCount = 10
 
-// Search 执行百度搜索
+// GetBaiduSearch 执行百度搜索
 // https://cloud.baidu.com/doc/qianfan-api/s/Wmbq4z7e5
-func Search(apiKey string, opts SearchOptions) (*SearchResponse, error) {
+func GetBaiduSearch(apiKey string, opts SearchOptions) (*SearchResponse, error) {
+	client := getHTTPClient()
+
 	requestBody := buildRequestBody(opts)
 
-	jsonData, err := json.Marshal(requestBody)
+	req := client.R().
+		SetBody(requestBody)
+
+	resp, err := req.Post("/v2/ai_search/web_search")
+
 	if err != nil {
-		return nil, fmt.Errorf("无法序列化请求体: %w", err)
+		return nil, fmt.Errorf("请求失败: %w", err)
 	}
 
-	req, err := http.NewRequest(http.MethodPost,
-		"https://qianfan.baidubce.com/v2/ai_search/web_search",
-		bytes.NewBuffer(jsonData))
-	if err != nil {
-		return nil, fmt.Errorf("无法创建请求: %w", err)
+	var result SearchResponse
+	if err := json.Unmarshal(resp.Bytes(), &result); err != nil {
+		return nil, fmt.Errorf("解析响应失败: %w", err)
 	}
 
-	req.Header.Set("X-Appbuilder-Authorization", fmt.Sprintf("Bearer %s", apiKey))
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("无法发送请求: %w", err)
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API 请求失败，状态码: %d", resp.StatusCode)
+	// 检查 API 返回码
+	if result.Code != "" && result.Code != "0" {
+		return nil, handleAPIError(result.Code, result.Message)
 	}
 
-	var result *SearchResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("无法解析响应体: %w", err)
-	}
-
-	return result, nil
+	return &result, nil
 }
 
 // buildRequestBody 构建请求体
@@ -157,18 +154,18 @@ func buildTimeFilter(freshness string, currentTime time.Time, endDate string) Se
 	case "py": // 一年内
 		startDate = currentTime.AddDate(-1, 0, 0).Format("2006-01-02")
 	default:
+		// 检查是否符合自定义日期格式 YYYY-MM-DDtoYYYY-MM-DD
 		if pattern.MatchString(freshness) {
-			parts := regexp.MustCompile(`to`).Split(freshness, 2)
+			// 解析自定义日期范围
 			return SearchFilter{
 				Range: PageTime{
 					PageTime: TimeRange{
-						GTE: parts[0],
-						LT:  parts[1],
+						GTE: freshness[:10],
+						LT:  freshness[12:],
 					},
 				},
 			}
 		}
-		return SearchFilter{}
 	}
 
 	return SearchFilter{

@@ -1,6 +1,7 @@
 package baidu_baike
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 
@@ -10,8 +11,6 @@ import (
 
 	"github.com/spf13/cobra"
 )
-
-// https://console.bce.baidu.com/qianfan/tools/toolsCenter/eb39b6d6-4ce4-498a-91f1-831a8dd38cf9/detail
 
 // BaiduBaikeSkill 百度百科技能
 type BaiduBaikeSkill struct {
@@ -34,11 +33,12 @@ func (s *BaiduBaikeSkill) GetCommand() *cobra.Command {
 }
 
 // GetInfo 获取技能元数据
+// https://console.bce.baidu.com/qianfan/tools/toolsCenter/eb39b6d6-4ce4-498a-91f1-831a8dd38cf9/detail
 func (s *BaiduBaikeSkill) GetInfo() types.SkillInfo {
 	return types.SkillInfo{
 		Name:        "baidu-baike",
 		Title:       "百度百科",
-		Version:     "1.0.0",
+		Version:     "1.1.0",
 		Author:      "dtapp",
 		Description: "百度百科提供百科官方内容检索服务，帮助用户快速、全面地获取权威的百科信息。支持百科词条义项查询、词条详情查询以及秒懂百科视频获取。适用于AI问答、内容创作、教育教学、知识检索等场景，为模型提供可信的知识支撑。",
 		Homepage:    "https://cnb.cool/dtapp/skills",
@@ -56,9 +56,26 @@ func (s *BaiduBaikeSkill) createCommand() *cobra.Command {
 
 	// 添加搜索子命令
 	cmd.AddCommand(s.createSearchCmd())
-	cmd.AddCommand(s.createVersionCmd())
 
 	return cmd
+}
+
+// 命令名称常量
+const (
+	CmdSearch = "search"
+)
+
+// CommandOutputField 命令与输出字段的映射
+type CommandOutputField struct {
+	CommandName string
+	FieldType   any
+}
+
+// GetCommandOutputFields 获取所有命令的输出字段映射
+func GetCommandOutputFields() []CommandOutputField {
+	return []CommandOutputField{
+		{CommandName: CmdSearch, FieldType: BaikeSimpleResult{}},
+	}
 }
 
 // createSearchCmd 创建搜索子命令
@@ -66,10 +83,11 @@ func (s *BaiduBaikeSkill) createSearchCmd() *cobra.Command {
 	var (
 		searchType string
 		searchKey  string
+		verbose    bool
 	)
 
 	cmd := &cobra.Command{
-		Use:   "search",
+		Use:   CmdSearch,
 		Short: "查询百度百科词条",
 		Run: func(cmd *cobra.Command, args []string) {
 			cmd.Printf("正在查询百度百科：%s\n", searchKey)
@@ -88,26 +106,46 @@ func (s *BaiduBaikeSkill) createSearchCmd() *cobra.Command {
 				SearchKey:  searchKey,
 			}
 
-			resp, err := Search(apiKey, opts)
+			resp, err := GetBaiduBaike(apiKey, opts)
 			if err != nil {
 				cmd.Printf("查询失败: %v\n", err)
 				return
 			}
 
 			// 输出结果
-			output, err := json.MarshalIndent(resp, "", "  ")
-			if err != nil {
-				cmd.Printf("格式化结果失败: %v\n", err)
-				return
+			if verbose {
+				// 输出完整结果（格式化后的 Result）
+				var buf bytes.Buffer
+				if err := json.Indent(&buf, resp.Result, "", "  "); err != nil {
+					cmd.Println(string(resp.Result))
+				} else {
+					cmd.Println(buf.String())
+				}
+			} else {
+				// 输出简洁结果（直接使用结构体解析）
+				if len(resp.Result) > 0 {
+					var simpleResult BaikeSimpleResult
+					if err := json.Unmarshal(resp.Result, &simpleResult); err != nil {
+						cmd.Println(string(resp.Result))
+					} else {
+						output, err := json.MarshalIndent(simpleResult, "", "  ")
+						if err != nil {
+							cmd.Println(string(resp.Result))
+						} else {
+							cmd.Println(string(output))
+						}
+					}
+				} else {
+					cmd.Println("{}")
+				}
 			}
-
-			cmd.Println(string(output))
 		},
 	}
 
 	// 定义 flags
 	cmd.Flags().StringVarP(&searchType, "type", "t", "lemmaTitle", "检索类型：lemmaTitle(按词条名)、lemmaId(按词条ID)")
 	cmd.Flags().StringVarP(&searchKey, "key", "k", "", "检索关键字")
+	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "输出完整结果")
 
 	// 标记必填参数
 	_ = cmd.MarkFlagRequired("key")
@@ -115,29 +153,26 @@ func (s *BaiduBaikeSkill) createSearchCmd() *cobra.Command {
 	return cmd
 }
 
-// createVersionCmd 创建版本信息命令
-func (s *BaiduBaikeSkill) createVersionCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "version",
-		Short: "显示版本信息",
-		Run: func(cmd *cobra.Command, args []string) {
-			cmd.Printf("技能名称: baidu-baike\n")
-			cmd.Printf("版本号: 1.0.0\n")
-			cmd.Printf("作者: dtapp\n")
-			cmd.Printf("描述: 通过百度百科 API 查询百科内容\n")
-			cmd.Printf("主页: https://cnb.cool/dtapp/skills\n")
-		},
-	}
-}
-
 // GetSkillInfo 获取完整的 SkillInfo（包含自动提取的 Commands）
-// 这是为了兼容现有代码的辅助函数
 func GetSkillInfo() types.SkillInfo {
 	skill := NewBaiduBaikeSkill()
-	return skills.ExtractSkillInfo(skill)
+	info := skills.ExtractSkillInfo(skill)
+
+	// 使用统一的映射为每个子命令设置对应的输出字段
+	cmdFieldMap := GetCommandOutputFields()
+	for i := range info.Commands {
+		for _, mapping := range cmdFieldMap {
+			if info.Commands[i].Name == mapping.CommandName {
+				info.Commands[i].OutputFields = skills.ExtractOutputFieldsFromStruct(mapping.FieldType)
+				break
+			}
+		}
+	}
+
+	return info
 }
 
-// NewBaiduBaikeCmd 创建百度百科子命令（为了兼容现有代码）
+// NewBaiduBaikeCmd 创建百度百科子命令
 func NewBaiduBaikeCmd() *cobra.Command {
 	skill := NewBaiduBaikeSkill()
 	return skill.GetCommand()

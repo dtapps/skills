@@ -51,4 +51,14 @@ allowed-tools: "{{.AllowedToolsStr}}"
 | `--{{.Name}}` | {{if .Shorthand}}`-{{.Shorthand}}`{{else}}-{{end}} | {{.Description}} | {{if .Required}}是{{else}}否{{end}} | {{if .Default}}{{.Default}}{{else}}-{{end}} |
 {{- end }}
 {{- end }}
+{{- if .OutputFields }}
+
+**输出字段：**
+
+| 字段名 | 描述 |
+|--------|------|
+{{- range .OutputFields }}
+| `{{.Name}}` | {{.Description}} |
+{{- end }}
+{{- end }}
 {{- end }}
