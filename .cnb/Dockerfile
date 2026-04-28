@@ -86,9 +86,9 @@ RUN ARCH=$(uname -m) && \
     echo "--- nfpm installed ---" && \
     nfpm --version
 
-# 7. 安装 msitools (包含 wixl，用于编译 Windows MSI)
-RUN apt-get install -y --no-install-recommends msitools && \
-    echo "--- msitools (wixl) installed ---" && \
+# 7. 安装 wixl (用于编译 Windows MSI)
+RUN apt-get update && apt-get install -y --no-install-recommends wixl wixl-data && \
+    echo "--- wixl installed ---" && \
     wixl --version
 
 # 8. 卸载不需要的工具，并清空所有 apt 缓存
