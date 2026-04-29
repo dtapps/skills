@@ -23,6 +23,16 @@ generate:
 	@mkdir -p $(DTSKILLS_WORK_DIR)
 	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . generate
 
+#####################
+
+# 获取 配置文件路径
+# make config-list
+.PHONY: config-list
+config-list:
+	@echo "[配置] 获取配置文件路径..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . config list
+
 # 获取 配置文件路径
 # make config-path
 .PHONY: config-path
@@ -31,6 +41,8 @@ config-path:
 	@mkdir -p $(DTSKILLS_WORK_DIR)
 	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . config path
 
+#####################
+
 # 获取 统计数据路径
 # make stats-path
 .PHONY: stats-path
@@ -38,6 +50,8 @@ stats-path:
 	@echo "[统计] 获取统计数据路径..."
 	@mkdir -p $(DTSKILLS_WORK_DIR)
 	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . stats path
+
+#####################
 
 # 获取 统计数据路径
 # make stats-list

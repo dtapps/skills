@@ -321,6 +321,108 @@ var configSetCmd = &cobra.Command{
 	},
 }
 
+// configAddCmd 添加配置项（追加到数组）
+var configAddCmd = &cobra.Command{
+	Use:   "add [key] [value]",
+	Short: "添加配置项（支持多 Key）",
+	Long:  "向指定配置项添加值，如果该配置项已存在则追加到数组，如: config add api_keys.baidu new_key",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		p := ui.NewPrinter(cmd.OutOrStdout())
+		key := args[0]
+		value := args[1]
+
+		// 获取现有值
+		existing := config.Get(key)
+		var keys []string
+
+		switch v := existing.(type) {
+		case []string:
+			keys = v
+		case string:
+			if v != "" {
+				keys = []string{v}
+			}
+		}
+
+		// 追加新值
+		keys = append(keys, value)
+
+		// 设置回配置
+		if err := config.Set(key, keys); err != nil {
+			p.Printf("添加失败: %v\n", err)
+			return
+		}
+
+		if err := config.SaveConfig(); err != nil {
+			p.Printf("保存失败: %v\n", err)
+			return
+		}
+
+		p.Printf("✓ %s 已添加，当前共 %d 个 Key\n", key, len(keys))
+	},
+}
+
+// configRemoveCmd 移除配置项中的某个值
+var configRemoveCmd = &cobra.Command{
+	Use:   "remove [key] [value]",
+	Short: "移除配置项中的某个值",
+	Long:  "从指定配置项中移除特定值，如: config remove api_keys.baidu old_key",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		p := ui.NewPrinter(cmd.OutOrStdout())
+		key := args[0]
+		value := args[1]
+
+		// 获取现有值
+		existing := config.Get(key)
+		var keys []string
+
+		switch v := existing.(type) {
+		case []string:
+			keys = v
+		case string:
+			if v != "" {
+				keys = []string{v}
+			}
+		}
+
+		// 移除指定值
+		found := false
+		newKeys := make([]string, 0, len(keys))
+		for _, k := range keys {
+			if k == value {
+				found = true
+				continue
+			}
+			newKeys = append(newKeys, k)
+		}
+
+		if !found {
+			p.Printf("未找到值: %s\n", value)
+			return
+		}
+
+		// 设置回配置
+		if len(newKeys) == 0 {
+			// 如果数组为空，删除该配置项
+			config.Set(key, "")
+		} else if len(newKeys) == 1 {
+			// 如果只剩一个，设为字符串
+			config.Set(key, newKeys[0])
+		} else {
+			config.Set(key, newKeys)
+		}
+
+		if err := config.SaveConfig(); err != nil {
+			p.Printf("保存失败: %v\n", err)
+			return
+		}
+
+		p.Printf("✓ %s 已移除，当前共 %d 个 Key\n", key, len(newKeys))
+	},
+}
+
 // configListCmd 列出所有配置
 var configListCmd = &cobra.Command{
 	Use:   "list",
@@ -395,6 +497,8 @@ func init() {
 	// 添加 config 子命令
 	configCmd.AddCommand(configGetCmd)
 	configCmd.AddCommand(configSetCmd)
+	configCmd.AddCommand(configAddCmd)
+	configCmd.AddCommand(configRemoveCmd)
 	configCmd.AddCommand(configListCmd)
 	configCmd.AddCommand(configPathCmd)
 	configCmd.AddCommand(configInitCmd)

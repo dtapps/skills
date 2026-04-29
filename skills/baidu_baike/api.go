@@ -30,7 +30,7 @@ type BaikeOptions struct {
 
 // GetBaiduBaike 查询百度百科
 // https://cloud.baidu.com/doc/qianfan/s/bmh4stpbh
-func GetBaiduBaike(apiKey string, opts BaikeOptions) (*BaikeResponse, error) {
+func GetBaiduBaike(opts BaikeOptions) (*BaikeResponse, error) {
 	client := getHTTPClient()
 
 	req := client.R().

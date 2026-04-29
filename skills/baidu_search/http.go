@@ -22,8 +22,8 @@ func getHTTPClient() *resty.Client {
 	client.SetTimeout(APITimeout)
 	client.SetHeader("Content-Type", "application/json")
 
-	// 添加 API Key（如果有）
-	if apiKey := config.GetBaiduAPIKey(); apiKey != "" {
+	// 添加 API Key（随机选择一个）
+	if apiKey := config.GetBaiduAPIKeyRandom(); apiKey != "" {
 		client.SetHeader("X-Appbuilder-Authorization", "Bearer "+apiKey)
 	}
 

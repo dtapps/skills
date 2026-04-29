@@ -30,8 +30,8 @@ func getHTTPClient(caller string) *resty.Client {
 	client.SetHeader("User-Agent", "tencent-news-cli/1.0.0")
 	client.SetHeader("Caller-Skill", caller)
 
-	// 添加 API Key（如果有）
-	if apiKey := config.GetTencentNewsAPIKey(); apiKey != "" {
+	// 添加 API Key（随机选择一个）
+	if apiKey := config.GetTencentNewsAPIKeyRandom(); apiKey != "" {
 		client.SetHeader("Authorization", "Bearer "+apiKey)
 	}
 

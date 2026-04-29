@@ -75,7 +75,7 @@ const DefaultCount = 10
 
 // GetBaiduSearch 执行百度搜索
 // https://cloud.baidu.com/doc/qianfan-api/s/Wmbq4z7e5
-func GetBaiduSearch(apiKey string, opts SearchOptions) (*SearchResponse, error) {
+func GetBaiduSearch(opts SearchOptions) (*SearchResponse, error) {
 	client := getHTTPClient()
 
 	requestBody := buildRequestBody(opts)

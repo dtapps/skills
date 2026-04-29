@@ -78,6 +78,17 @@ func GetCommandOutputFields() []CommandOutputField {
 	}
 }
 
+// requireAPIKey 检查并获取百度 API Key
+func (s *BaiduSearchSkill) requireAPIKey(cmd *cobra.Command) (string, bool) {
+	apiKey := config.GetBaiduAPIKeyRandom()
+	if apiKey == "" {
+		cmd.Println("错误：未设置百度 API Key，请在配置文件或环境变量中设置")
+		cmd.Println("提示：使用 'dtskills config set api_keys.baidu <your-api-key>' 设置，或使用 'dtskills config add api_keys.baidu <your-api-key>' 添加多个 Key")
+		return "", false
+	}
+	return apiKey, true
+}
+
 // createSearchCmd 创建搜索子命令
 func (s *BaiduSearchSkill) createSearchCmd() *cobra.Command {
 	var (
@@ -93,11 +104,8 @@ func (s *BaiduSearchSkill) createSearchCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			cmd.Printf("正在搜索: %s\n", query)
 
-			// 获取百度 API Key
-			apiKey := config.GetBaiduAPIKey()
-			if apiKey == "" {
-				cmd.Println("错误：未设置百度 API Key，请在配置文件或环境变量中设置")
-				cmd.Println("提示：使用 'dtskills config set api_keys.baidu <your-api-key>' 设置")
+			// 检查并获取 API Key
+			if _, ok := s.requireAPIKey(cmd); !ok {
 				return
 			}
 
@@ -108,7 +116,7 @@ func (s *BaiduSearchSkill) createSearchCmd() *cobra.Command {
 				Freshness: freshness,
 			}
 
-			resp, err := GetBaiduSearch(apiKey, opts)
+			resp, err := GetBaiduSearch(opts)
 			if err != nil {
 				cmd.Printf("搜索失败: %v\n", err)
 				return

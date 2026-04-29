@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/dtapp/skills/config"
 	"github.com/dtapp/skills/skills"
 	"github.com/dtapp/skills/types"
 	"github.com/tidwall/gjson"
@@ -87,6 +88,17 @@ func (s *TencentNewsSkill) createCommand() *cobra.Command {
 	return cmd
 }
 
+// requireAPIKey 检查并获取腾讯新闻 API Key
+func (s *TencentNewsSkill) requireAPIKey(cmd *cobra.Command) (string, bool) {
+	apiKey := config.GetTencentNewsAPIKeyRandom()
+	if apiKey == "" {
+		cmd.Println("错误：未设置腾讯新闻 API Key，请在配置文件或环境变量中设置")
+		cmd.Println("提示：使用 'dtskills config set api_keys.tencent_news <your-api-key>' 设置，或使用 'dtskills config add api_keys.tencent_news <your-api-key>' 添加多个 Key")
+		return "", false
+	}
+	return apiKey, true
+}
+
 // createSearchCmd 创建搜索子命令
 func (s *TencentNewsSkill) createSearchCmd() *cobra.Command {
 	var (
@@ -101,6 +113,11 @@ func (s *TencentNewsSkill) createSearchCmd() *cobra.Command {
 		Short: "搜索新闻",
 		Run: func(cmd *cobra.Command, args []string) {
 			cmd.Printf("正在搜索新闻: %s\n", query)
+
+			// 检查并获取 API Key
+			if _, ok := s.requireAPIKey(cmd); !ok {
+				return
+			}
 
 			resp, err := SearchNews(query, count, page, s.GetInfo().Name)
 			if err != nil {
@@ -159,6 +176,11 @@ func (s *TencentNewsSkill) createHotCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			cmd.Println("正在获取热点新闻...")
 
+			// 检查并获取 API Key
+			if _, ok := s.requireAPIKey(cmd); !ok {
+				return
+			}
+
 			resp, err := GetHotNews(count, s.GetInfo().Name)
 			if err != nil {
 				cmd.Printf("获取热点新闻失败: %v\n", err)
@@ -208,6 +230,11 @@ func (s *TencentNewsSkill) createMorningCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			cmd.Println("正在获取新闻早报...")
 
+			// 检查并获取 API Key
+			if _, ok := s.requireAPIKey(cmd); !ok {
+				return
+			}
+
 			resp, err := GetBroadcast(1, s.GetInfo().Name) // 1=早报
 			if err != nil {
 				cmd.Printf("获取新闻早报失败: %v\n", err)
@@ -256,6 +283,11 @@ func (s *TencentNewsSkill) createEveningCmd() *cobra.Command {
 		Short: "获取新闻晚报",
 		Run: func(cmd *cobra.Command, args []string) {
 			cmd.Println("正在获取新闻晚报...")
+
+			// 检查并获取 API Key
+			if _, ok := s.requireAPIKey(cmd); !ok {
+				return
+			}
 
 			resp, err := GetBroadcast(2, s.GetInfo().Name) // 2=晚报
 			if err != nil {

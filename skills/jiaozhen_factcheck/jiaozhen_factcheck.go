@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/dtapp/skills/config"
 	"github.com/dtapp/skills/skills"
 	"github.com/dtapp/skills/types"
 
@@ -58,6 +59,17 @@ func (s *JiaozhenFactCheckSkill) createCommand() *cobra.Command {
 	return cmd
 }
 
+// requireAPIKey 检查并获取腾讯较真 API Key
+func (s *JiaozhenFactCheckSkill) requireAPIKey(cmd *cobra.Command) (string, bool) {
+	apiKey := config.GetTencentNewsAPIKeyRandom()
+	if apiKey == "" {
+		cmd.Println("错误：未设置腾讯较真 API Key，请在配置文件或环境变量中设置")
+		cmd.Println("提示：使用 'dtskills config set api_keys.tencent_news <your-api-key>' 设置，或使用 'dtskills config add api_keys.tencent_news <your-api-key>' 添加多个 Key")
+		return "", false
+	}
+	return apiKey, true
+}
+
 // createCheckCmd 创建查证子命令
 func (s *JiaozhenFactCheckSkill) createCheckCmd() *cobra.Command {
 	var (
@@ -69,6 +81,11 @@ func (s *JiaozhenFactCheckSkill) createCheckCmd() *cobra.Command {
 		Use:   "check",
 		Short: "事实查证",
 		Run: func(cmd *cobra.Command, args []string) {
+			// 检查并获取 API Key
+			if _, ok := s.requireAPIKey(cmd); !ok {
+				return
+			}
+
 			cmd.Printf("正在查证: %s\n", query)
 
 			resp, err := FactCheck(query, s.GetInfo().Name)

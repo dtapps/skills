@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/dtapp/skills/config"
 	"github.com/dtapp/skills/skills"
 	"github.com/dtapp/skills/types"
 	"github.com/tidwall/gjson"
@@ -87,6 +88,17 @@ func (s *TencentWeatherSkill) createCommand() *cobra.Command {
 	return cmd
 }
 
+// requireAPIKey 检查并获取腾讯天气 API Key
+func (s *TencentWeatherSkill) requireAPIKey(cmd *cobra.Command) (string, bool) {
+	apiKey := config.GetTencentNewsAPIKeyRandom()
+	if apiKey == "" {
+		cmd.Println("错误：未设置腾讯天气 API Key，请在配置文件或环境变量中设置")
+		cmd.Println("提示：使用 'dtskills config set api_keys.tencent_news <your-api-key>' 设置，或使用 'dtskills config add api_keys.tencent_news <your-api-key>' 添加多个 Key")
+		return "", false
+	}
+	return apiKey, true
+}
+
 // createCurrentCmd 创建实时天气子命令
 func (s *TencentWeatherSkill) createCurrentCmd() *cobra.Command {
 	var (
@@ -98,6 +110,11 @@ func (s *TencentWeatherSkill) createCurrentCmd() *cobra.Command {
 		Use:   CmdCurrent,
 		Short: "获取实时天气",
 		Run: func(cmd *cobra.Command, args []string) {
+			// 检查并获取 API Key
+			if _, ok := s.requireAPIKey(cmd); !ok {
+				return
+			}
+
 			if adcode == "" {
 				cmd.Println("正在获取当前地区天气...")
 			} else {
@@ -160,6 +177,11 @@ func (s *TencentWeatherSkill) createForecastCmd() *cobra.Command {
 		Short: "获取天气预报",
 		Long:  "获取天气预报，支持 forecast_1h(1小时预报) 或 forecast_24h(24小时预报)",
 		Run: func(cmd *cobra.Command, args []string) {
+			// 检查并获取 API Key
+			if _, ok := s.requireAPIKey(cmd); !ok {
+				return
+			}
+
 			if adcode == "" {
 				cmd.Println("正在获取当前地区天气预报...")
 			} else {
@@ -230,6 +252,11 @@ func (s *TencentWeatherSkill) createAirQualityCmd() *cobra.Command {
 		Short: "获取天气空气质量",
 		Long:  "获取天气空气质量",
 		Run: func(cmd *cobra.Command, args []string) {
+			// 检查并获取 API Key
+			if _, ok := s.requireAPIKey(cmd); !ok {
+				return
+			}
+
 			if adcode == "" {
 				cmd.Println("正在获取当前地区天气空气质量...")
 			} else {
@@ -285,6 +312,11 @@ func (s *TencentWeatherSkill) createIP2CityCmd() *cobra.Command {
 		Use:   CmdIP2City,
 		Short: "IP定位获取城市",
 		Run: func(cmd *cobra.Command, args []string) {
+			// 检查并获取 API Key
+			if _, ok := s.requireAPIKey(cmd); !ok {
+				return
+			}
+
 			cmd.Println("正在获取IP定位信息...")
 
 			resp, err := GetIP2City(s.GetInfo().Name)
