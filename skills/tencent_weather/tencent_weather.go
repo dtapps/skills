@@ -93,7 +93,7 @@ func (s *TencentWeatherSkill) requireAPIKey(cmd *cobra.Command) (string, bool) {
 	apiKey := config.GetTencentNewsAPIKeyRandom()
 	if apiKey == "" {
 		cmd.Println("错误：未设置腾讯天气 API Key，请在配置文件或环境变量中设置")
-		cmd.Println("提示：使用 'dtskills config set api_keys.tencent_news <your-api-key>' 设置，或使用 'dtskills config add api_keys.tencent_news <your-api-key>' 添加多个 Key")
+		cmd.Printf("提示：使用 '%s config set api_keys.tencent_news <your-api-key>' 设置，或使用 '%s config add api_keys.tencent_news <your-api-key>' 添加多个 Key\n", types.ProjectName, types.ProjectName)
 		return "", false
 	}
 	return apiKey, true

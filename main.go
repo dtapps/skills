@@ -467,7 +467,7 @@ var configPathCmd = &cobra.Command{
 		}
 
 		// 显示环境变量（如果设置了）
-		envVar := "DTSKILLS_WORK_DIR"
+		envVar := config.GetWorkDirEnv()
 		if envValue := os.Getenv(envVar); envValue != "" {
 			p.Printf("  环境变量: %s=%s\n", envVar, envValue)
 		}

@@ -20,8 +20,8 @@ const (
 	TencentNewsAPIKeyEnv = "TENCENT_NEWS_API_KEY"
 )
 
-// getWorkDirEnv 获取工作目录环境变量名 (动态生成: {PROJECT_NAME}_WORK_DIR)
-func getWorkDirEnv() string {
+// GetWorkDirEnv 获取工作目录环境变量名 (动态生成: {PROJECT_NAME}_WORK_DIR)
+func GetWorkDirEnv() string {
 	return strings.ToUpper(types.ProjectName) + "_WORK_DIR"
 }
 
@@ -41,7 +41,7 @@ const (
 // 优先级：DTSKILLS_WORK_DIR > 用户配置目录 > 当前目录
 func resolveWorkDir() string {
 	// 检查环境变量
-	workDir := os.Getenv(getWorkDirEnv())
+	workDir := os.Getenv(GetWorkDirEnv())
 	if workDir != "" {
 		return workDir
 	}
@@ -257,7 +257,7 @@ func GetConfigFile() string {
 // 优先级：{PROJECT_NAME}_WORK_DIR > 配置文件所在目录 > 用户配置目录 > 当前目录
 func GetWorkDir() string {
 	// 检查环境变量
-	workDir := os.Getenv(getWorkDirEnv())
+	workDir := os.Getenv(GetWorkDirEnv())
 	if workDir != "" {
 		return workDir
 	}
