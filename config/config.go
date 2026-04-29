@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-// 环境变量名
+//nolint:gosec // 环境变量名不是凭证
 const (
 	// BaiduAPIKeyEnv 百度 API Key 环境变量
 	BaiduAPIKeyEnv = "BAIDU_API_KEY"
@@ -25,7 +25,7 @@ func GetWorkDirEnv() string {
 	return strings.ToUpper(types.ProjectName) + "_WORK_DIR"
 }
 
-// 配置键常量
+//nolint:gosec // 配置键名不是凭证
 const (
 	// KeyBaiduAPIKey 百度 API Key 配置键
 	KeyBaiduAPIKey = "api_keys.baidu"

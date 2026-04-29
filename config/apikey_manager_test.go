@@ -58,8 +58,8 @@ func TestNewAPIKeyManager(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// 设置环境变量
 			for k, v := range tt.envVars {
-				os.Setenv(k, v)
-				defer os.Unsetenv(k)
+				_ = os.Setenv(k, v)
+				defer func(key string) { _ = os.Unsetenv(key) }(k)
 			}
 
 			// 设置配置文件
@@ -86,7 +86,7 @@ func TestAPIKeyManagerGetRandom(t *testing.T) {
 	}
 
 	// 测试随机获取
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		key := manager.GetRandom()
 		assert.Contains(t, []string{"key1", "key2", "key3"}, key)
 	}
@@ -160,8 +160,8 @@ func TestReadEnvKeys(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// 设置环境变量
 			for k, v := range tt.envVars {
-				os.Setenv(k, v)
-				defer os.Unsetenv(k)
+				_ = os.Setenv(k, v)
+				defer func(key string) { _ = os.Unsetenv(key) }(k)
 			}
 
 			gotKeys := ReadEnvKeys(tt.baseEnvVar)
@@ -180,10 +180,10 @@ func TestReadEnvKeys(t *testing.T) {
 
 func TestGetBaiduAPIKeyFunctions(t *testing.T) {
 	// 设置测试环境变量
-	os.Setenv("BAIDU_API_KEY", "baidu_key1")
-	os.Setenv("BAIDU_API_KEY_1", "baidu_key2")
-	defer os.Unsetenv("BAIDU_API_KEY")
-	defer os.Unsetenv("BAIDU_API_KEY_1")
+	_ = os.Setenv("BAIDU_API_KEY", "baidu_key1")
+	_ = os.Setenv("BAIDU_API_KEY_1", "baidu_key2")
+	defer func() { _ = os.Unsetenv("BAIDU_API_KEY") }()
+	defer func() { _ = os.Unsetenv("BAIDU_API_KEY_1") }()
 
 	// 重置单例，确保使用新的环境变量
 	baiduKeyManager = nil
@@ -208,8 +208,8 @@ func TestGetBaiduAPIKeyFunctions(t *testing.T) {
 
 func TestGetTencentNewsAPIKeyFunctions(t *testing.T) {
 	// 设置测试环境变量
-	os.Setenv("TENCENT_NEWS_API_KEY", "tencent_key1")
-	defer os.Unsetenv("TENCENT_NEWS_API_KEY")
+	_ = os.Setenv("TENCENT_NEWS_API_KEY", "tencent_key1")
+	defer func() { _ = os.Unsetenv("TENCENT_NEWS_API_KEY") }()
 
 	// 重置单例
 	tencentNewsKeyManager = nil

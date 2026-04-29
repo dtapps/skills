@@ -2,10 +2,9 @@ package config
 
 import (
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"os"
 	"sync"
-	"time"
 
 	"github.com/spf13/viper"
 )
@@ -42,8 +41,9 @@ func NewAPIKeyManager(configKey string, envVar string) *APIKeyManager {
 	}
 
 	return &APIKeyManager{
-		keys:   keys,
-		random: rand.New(rand.NewSource(time.Now().UnixNano())),
+		keys: keys,
+		//nolint:gosec // 用于 API Key 随机选择，不需要加密安全级别
+		random: rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64())),
 	}
 }
 
@@ -93,7 +93,7 @@ func (m *APIKeyManager) GetRandom() string {
 	if len(m.keys) == 0 {
 		return ""
 	}
-	return m.keys[m.random.Intn(len(m.keys))]
+	return m.keys[m.random.IntN(len(m.keys))]
 }
 
 // GetNext 轮询获取下一个 Key

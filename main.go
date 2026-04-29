@@ -406,12 +406,12 @@ var configRemoveCmd = &cobra.Command{
 		// 设置回配置
 		if len(newKeys) == 0 {
 			// 如果数组为空，删除该配置项
-			config.Set(key, "")
+			_ = config.Set(key, "")
 		} else if len(newKeys) == 1 {
 			// 如果只剩一个，设为字符串
-			config.Set(key, newKeys[0])
+			_ = config.Set(key, newKeys[0])
 		} else {
-			config.Set(key, newKeys)
+			_ = config.Set(key, newKeys)
 		}
 
 		if err := config.SaveConfig(); err != nil {

@@ -43,6 +43,14 @@ config-path:
 
 #####################
 
+# 获取 统计数据
+# make stats-list
+.PHONY: stats-list
+stats-list:
+	@echo "[统计] 获取统计数据..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . stats list
+
 # 获取 统计数据路径
 # make stats-path
 .PHONY: stats-path
