@@ -5,7 +5,7 @@
 ## 功能特性
 
 - **生成技能包**：通过交互式界面生成 SKILL.md 文件
-- **执行命令**：执行技能包中的命令（百度百科搜索、百度搜索）
+- **执行命令**：执行技能包中的命令（百度百科搜索、百度搜索、腾讯新闻、腾讯天气）
 - **配置管理**：管理 API Key 等配置
 - **自升级**：支持自动检查并升级到新版本
 
@@ -45,6 +45,7 @@ sudo apt-get install -f
 ```
 
 安装后可直接使用 `dtskills` 命令：
+
 ```bash
 dtskills --version
 dtskills generate
@@ -64,6 +65,7 @@ sudo dnf install dtskills.x86_64.rpm
 ```
 
 安装后可直接使用 `dtskills` 命令：
+
 ```bash
 dtskills --version
 dtskills generate
@@ -96,10 +98,12 @@ dtskills generate
 ```
 
 参数：
+
 - `-k, --key`：检索关键字（必填）
 - `-t, --type`：检索类型，可选 `lemmaTitle`(按词条名) 或 `lemmaId`(按词条ID)，默认 `lemmaTitle`
 
 例如：
+
 ```bash
 ./dtskills baidu-baike search -k 刘德华
 ./dtskills baidu-baike search -k 人工智能 -t lemmaTitle
@@ -112,11 +116,13 @@ dtskills generate
 ```
 
 参数：
+
 - `-q, --query`：搜索关键词（必填）
 - `-c, --count`：返回结果数量，默认 10
 - `-f, --freshness`：时间筛选，如 `pd`(最近24小时)、`pw`(最近7天)、`pm`(最近31天)、`py`(最近365天) 或 `YYYY-MM-DDtoYYYY-MM-DD`
 
 例如：
+
 ```bash
 # 基础搜索
 ./dtskills baidu-search search -q 人工智能
@@ -129,11 +135,70 @@ dtskills generate
 ./dtskills baidu-search search -q 2025年新闻 -f 2025-01-01to2025-12-31
 ```
 
+#### 腾讯新闻
+
+```bash
+./dtskills tencent-news [command] [flags]
+```
+
+**子命令：**
+
+- `search` - 搜索新闻
+- `hot` - 获取热点新闻
+- `morning` - 获取新闻早报
+- `evening` - 获取新闻晚报
+
+**示例：**
+
+```bash
+# 搜索新闻
+./dtskills tencent-news search -q 人工智能
+
+# 获取热点新闻
+./dtskills tencent-news hot
+
+# 获取新闻早报
+./dtskills tencent-news morning
+
+# 获取新闻晚报
+./dtskills tencent-news evening
+```
+
+#### 腾讯天气
+
+```bash
+./dtskills tencent-weather [command] [flags]
+```
+
+**子命令：**
+
+- `current` - 获取实时天气
+- `forecast` - 获取天气预报
+- `airquality` - 获取空气质量
+- `ip2city` - 根据 IP 获取城市信息
+
+**示例：**
+
+```bash
+# 获取北京实时天气（adcode: 110000）
+./dtskills tencent-weather current -a 110000
+
+# 获取北京天气预报
+./dtskills tencent-weather forecast -a 110000
+
+# 获取北京空气质量
+./dtskills tencent-weather airquality -a 110000
+
+# 根据 IP 获取城市信息
+./dtskills tencent-weather ip2city
+```
+
 ### 自动补全
 
 支持为 Bash、Zsh 和 PowerShell 生成自动补全脚本，让你在输入命令时按 `Tab` 键自动补全命令和参数。
 
 **快速安装（Debian/Ubuntu）**：
+
 ```bash
 sudo dtskills completion bash > /etc/bash_completion.d/dtskills
 source /etc/bash_completion.d/dtskills
@@ -150,6 +215,7 @@ source /etc/bash_completion.d/dtskills
 ```
 
 例如：
+
 ```bash
 # 设置百度 API Key
 ./dtskills config set api_keys.baidu your-api-key
@@ -215,11 +281,7 @@ skills/
 
 ## 配置说明
 
-配置文件支持以下位置（按优先级排序）：
-
-1. 环境变量 `DTSKILLS_CONFIG` 指定的路径
-2. 当前目录下的 `config.yaml`
-3. 系统配置目录（如 `~/.config/dtskills/config.yaml`）
+配置文件 `config.yaml` 位于工作目录下（由 `DTSKILLS_WORK_DIR` 环境变量指定，默认为当前目录或用户配置目录 `~/.config/dtskills/`）。
 
 ### 配置示例
 
@@ -276,12 +338,11 @@ make deps
 
 ## 环境变量
 
-| 变量名 | 说明 | 示例 |
-|--------|------|------|
-| `DTSKILLS_CONFIG` | 配置文件路径 | `./config.yaml` |
-| `BAIDU_API_KEY` | 百度 API Key | `your-api-key` |
-| `BINARY_NAME` | 构建时的二进制名称 | `dtskills` |
-| `VERSION` | 构建时的版本号 | `1.0.0` |
+| 变量名                 | 说明                             | 示例           |
+| ---------------------- | -------------------------------- | -------------- |
+| `DTSKILLS_WORK_DIR`    | 工作目录（存储技能包和统计数据） | `./`           |
+| `BAIDU_API_KEY`        | 百度 API Key                     | `your-api-key` |
+| `TENCENT_NEWS_API_KEY` | 腾讯新闻/天气 API Key            | `your-api-key` |
 
 ## 技术栈
 

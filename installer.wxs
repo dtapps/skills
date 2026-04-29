@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
     <Product Id="*" Name="dtskills" Manufacturer="dtapp"
-             UpgradeCode="6F7C8D9E-0A1B-2C3D-4E5F-6789ABCDEF02"
+             UpgradeCode="D1234567-89AB-CDEF-0123-456789ABCDEF" 
              Language="2052" Codepage="936" Version="${VERSION}">
 
-        <Package InstallerVersion="200" Compressed="yes"
-                 InstallScope="perMachine" InstallPrivileges="elevated" />
+        <Package InstallerVersion="200" Compressed="yes" 
+                 InstallScope="perUser" Platform="${PLATFORM}" />
 
-        <MajorUpgrade DowngradeErrorMessage="A newer version is already installed." />
+        <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="已安装更高版本。" />
         <MediaTemplate EmbedCab="yes" />
 
         <Directory Id="TARGETDIR" Name="SourceDir">
-            <Directory Id="ProgramFiles64Folder">
+            <Directory Id="AppDataFolder">
                 <Directory Id="INSTALLDIR" Name="dtskills" />
             </Directory>
         </Directory>
@@ -21,7 +21,9 @@
                 <File Id="dtskills.exe" Source="dtskills.exe" KeyPath="yes" />
 
                 <Environment Id="PATH" Name="PATH" Value="[INSTALLDIR]"
-                             Permanent="no" Part="last" Action="set" System="yes" />
+                             Permanent="no" Part="last" Action="set" System="no" />
+                
+                <RegistryValue Root="HKCU" Key="Software\dtapp\dtskills" Name="installed" Type="integer" Value="1" KeyPath="yes" />
             </Component>
         </DirectoryRef>
 

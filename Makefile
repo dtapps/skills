@@ -403,17 +403,20 @@ package-linux-all: package-deb package-rpm
 ## 打包 (Windows MSI)
 #####################
 
+# 确保版本号是纯数字，例如从 v1.0.0 变成 1.0.0
+MSI_VERSION=$(shell echo $(VERSION) | sed 's/v//')
+
 # 打包 Windows MSI (AMD64)
 .PHONY: package-win-amd64
 package-win-amd64: build-windows-amd64
 	@echo "[打包] 创建 Windows MSI 包 (AMD64)..."
 	@mkdir -p dist
-	@cp dist/dtskills-windows-amd64.exe dist/dtskills.exe
-	@sed -e 's|$${VERSION}|$(VERSION)|g' \
-	     -e 's|Source="dtskills.exe"|Source="dist/dtskills.exe"|g' \
+	@sed -e 's|$${VERSION}|$(MSI_VERSION)|g' \
+	     -e 's|$${PLATFORM}|x64|g' \
+	     -e 's|Source="dtskills.exe"|Source="dist/dtskills-windows-amd64.exe"|g' \
 	     installer.wxs > dist/installer-amd64.wxs
 	wixl dist/installer-amd64.wxs -o dist/dtskills_amd64.msi
-	@rm -f dist/installer-amd64.wxs dist/dtskills.exe
+	@rm -f dist/installer-amd64.wxs
 	@echo "✓ MSI 包已创建: dist/dtskills_amd64.msi"
 
 # 打包 Windows MSI (ARM64)
@@ -421,12 +424,12 @@ package-win-amd64: build-windows-amd64
 package-win-arm64: build-windows-arm64
 	@echo "[打包] 创建 Windows MSI 包 (ARM64)..."
 	@mkdir -p dist
-	@cp dist/dtskills-windows-arm64.exe dist/dtskills.exe
-	@sed -e 's|$${VERSION}|$(VERSION)|g' \
-	     -e 's|Source="dtskills.exe"|Source="dist/dtskills.exe"|g' \
+	@sed -e 's|$${VERSION}|$(MSI_VERSION)|g' \
+	     -e 's|$${PLATFORM}|arm64|g' \
+	     -e 's|Source="dtskills.exe"|Source="dist/dtskills-windows-arm64.exe"|g' \
 	     installer.wxs > dist/installer-arm64.wxs
 	wixl dist/installer-arm64.wxs -o dist/dtskills_arm64.msi
-	@rm -f dist/installer-arm64.wxs dist/dtskills.exe
+	@rm -f dist/installer-arm64.wxs
 	@echo "✓ MSI 包已创建: dist/dtskills_arm64.msi"
 
 # 打包 Windows MSI (386)
@@ -434,12 +437,12 @@ package-win-arm64: build-windows-arm64
 package-win-386: build-windows-386
 	@echo "[打包] 创建 Windows MSI 包 (386)..."
 	@mkdir -p dist
-	@cp dist/dtskills-windows-386.exe dist/dtskills.exe
-	@sed -e 's|$${VERSION}|$(VERSION)|g' \
-	     -e 's|Source="dtskills.exe"|Source="dist/dtskills.exe"|g' \
+	@sed -e 's|$${VERSION}|$(MSI_VERSION)|g' \
+	     -e 's|$${PLATFORM}|x86|g' \
+	     -e 's|Source="dtskills.exe"|Source="dist/dtskills-windows-386.exe"|g' \
 	     installer.wxs > dist/installer-386.wxs
 	wixl dist/installer-386.wxs -o dist/dtskills_386.msi
-	@rm -f dist/installer-386.wxs dist/dtskills.exe
+	@rm -f dist/installer-386.wxs
 	@echo "✓ MSI 包已创建: dist/dtskills_386.msi"
 
 # 打包所有 Windows MSI 包
