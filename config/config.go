@@ -2,9 +2,12 @@ package config
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/dtapp/skills/types"
 
@@ -130,6 +133,163 @@ func SetTencentNewsAPIKey(apiKey string) {
 // SetSkillsPath 设置技能包路径
 func SetSkillsPath(path string) {
 	viper.Set(KeySkillsPath, path)
+}
+
+// apiKeyManager 多 Key 管理器
+type apiKeyManager struct {
+	keys   []string
+	index  int
+	mu     sync.Mutex
+	random *rand.Rand
+}
+
+// newAPIKeyManager 创建 API Key 管理器
+// 支持四种配置格式：
+// 1. 配置文件 - 字符串（单 Key）：api_keys.baidu: "key1"
+// 2. 配置文件 - 数组（多 Key）：api_keys.baidu: ["key1", "key2", "key3"]
+// 3. 环境变量（单 Key）：BAIDU_API_KEY="key1"
+// 4. 环境变量（多 Key）：BAIDU_API_KEY="key1", BAIDU_API_KEY_1="key2", BAIDU_API_KEY_2="key3"
+func newAPIKeyManager(configKey string, envVar string) *apiKeyManager {
+	var keys []string
+
+	// 优先检查环境变量（支持 _数字 后缀格式）
+	keys = readEnvKeys(envVar)
+
+	// 环境变量未设置，从配置文件读取
+	if len(keys) == 0 {
+		// 尝试获取数组
+		if arr := viper.GetStringSlice(configKey); len(arr) > 0 {
+			keys = arr
+		} else if str := viper.GetString(configKey); str != "" {
+			// 兼容旧格式：单字符串
+			keys = []string{str}
+		}
+	}
+
+	return &apiKeyManager{
+		keys:   keys,
+		random: rand.New(rand.NewSource(time.Now().UnixNano())),
+	}
+}
+
+// readEnvKeys 从环境变量读取多个 Key
+// 格式：ENV_VAR, ENV_VAR_1, ENV_VAR_2, ... (最多 20 个)
+// 先读取基础变量，然后读取 _1 到 _19，中间有空不停止
+func readEnvKeys(baseEnvVar string) []string {
+	var keys []string
+	maxKeys := 20
+
+	// 先读取基础变量
+	if baseValue := os.Getenv(baseEnvVar); baseValue != "" {
+		keys = append(keys, baseValue)
+	}
+
+	// 并发读取 _1 到 _19
+	var wg sync.WaitGroup
+	keyChan := make(chan string, maxKeys-1)
+
+	for i := 1; i < maxKeys; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			envKey := fmt.Sprintf("%s_%d", baseEnvVar, idx)
+			if value := os.Getenv(envKey); value != "" {
+				keyChan <- value
+			}
+		}(i)
+	}
+
+	// 等待所有 goroutine 完成
+	go func() {
+		wg.Wait()
+		close(keyChan)
+	}()
+
+	// 收集结果
+	for value := range keyChan {
+		keys = append(keys, value)
+	}
+
+	return keys
+}
+
+// GetRandom 随机获取一个 Key
+func (m *apiKeyManager) GetRandom() string {
+	if len(m.keys) == 0 {
+		return ""
+	}
+	return m.keys[m.random.Intn(len(m.keys))]
+}
+
+// GetNext 轮询获取下一个 Key
+func (m *apiKeyManager) GetNext() string {
+	if len(m.keys) == 0 {
+		return ""
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	key := m.keys[m.index]
+	m.index = (m.index + 1) % len(m.keys)
+	return key
+}
+
+// GetAll 获取所有 Key
+func (m *apiKeyManager) GetAll() []string {
+	return m.keys
+}
+
+// baiduKeyManager 百度 API Key 管理器（懒加载）
+var baiduKeyManager *apiKeyManager
+var baiduKeyOnce sync.Once
+
+// getBaiduKeyManager 获取百度 Key 管理器
+func getBaiduKeyManager() *apiKeyManager {
+	baiduKeyOnce.Do(func() {
+		baiduKeyManager = newAPIKeyManager(KeyBaiduAPIKey, BaiduAPIKeyEnv)
+	})
+	return baiduKeyManager
+}
+
+// tencentNewsKeyManager 腾讯新闻 API Key 管理器（懒加载）
+var tencentNewsKeyManager *apiKeyManager
+var tencentNewsKeyOnce sync.Once
+
+// getTencentNewsKeyManager 获取腾讯新闻 Key 管理器
+func getTencentNewsKeyManager() *apiKeyManager {
+	tencentNewsKeyOnce.Do(func() {
+		tencentNewsKeyManager = newAPIKeyManager(KeyTencentNewsAPIKey, TencentNewsAPIKeyEnv)
+	})
+	return tencentNewsKeyManager
+}
+
+// GetBaiduAPIKeyRandom 随机获取一个百度 API Key
+func GetBaiduAPIKeyRandom() string {
+	return getBaiduKeyManager().GetRandom()
+}
+
+// GetBaiduAPIKeyNext 轮询获取下一个百度 API Key
+func GetBaiduAPIKeyNext() string {
+	return getBaiduKeyManager().GetNext()
+}
+
+// GetBaiduAPIKeys 获取所有百度 API Key
+func GetBaiduAPIKeys() []string {
+	return getBaiduKeyManager().GetAll()
+}
+
+// GetTencentNewsAPIKeyRandom 随机获取一个腾讯新闻 API Key
+func GetTencentNewsAPIKeyRandom() string {
+	return getTencentNewsKeyManager().GetRandom()
+}
+
+// GetTencentNewsAPIKeyNext 轮询获取下一个腾讯新闻 API Key
+func GetTencentNewsAPIKeyNext() string {
+	return getTencentNewsKeyManager().GetNext()
+}
+
+// GetTencentNewsAPIKeys 获取所有腾讯新闻 API Key
+func GetTencentNewsAPIKeys() []string {
+	return getTencentNewsKeyManager().GetAll()
 }
 
 // SaveConfig 保存配置到文件
