@@ -31,7 +31,6 @@
         </DirectoryRef>
 
         <Feature Id="MainFeature" Level="1">
-            <ComponentGroupRef Id="MainGroup" /> 
             <ComponentRef Id="MainExecutable" />
         </Feature>
     </Product>
