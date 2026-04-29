@@ -61,16 +61,6 @@ stats-path:
 
 #####################
 
-# 获取 统计数据路径
-# make stats-list
-.PHONY: stats-list
-stats-list:
-	@echo "[统计] 获取统计数据路径..."
-	@mkdir -p $(DTSKILLS_WORK_DIR)
-	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . stats list
-
-#####################
-
 # 获取 百度搜索
 # make baidu-search QUERY="人工智能" COUNT=10
 # make baidu-search QUERY="人工智能" COUNT=10 VERBOSE="-v"
