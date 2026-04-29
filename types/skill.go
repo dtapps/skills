@@ -27,11 +27,12 @@ type OutputField struct {
 
 // Command 命令信息
 type Command struct {
-	Name         string        // 命令名称
-	Description  string        // 命令描述
-	Usage        string        // 使用示例
-	Flags        []Flag        // 命令参数列表
-	OutputFields []OutputField // 命令的输出字段 (可选)
+	Name            string        // 命令名称
+	Description     string        // 命令描述
+	LongDescription string        // 命令长描述
+	Usage           string        // 使用示例
+	Flags           []Flag        // 命令参数列表
+	OutputFields    []OutputField // 命令的输出字段 (可选)
 }
 
 // Flag 命令参数信息

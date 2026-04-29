@@ -84,9 +84,9 @@ func TestTokenManager_Load(t *testing.T) {
 
 	t.Run("加载单个Token文件", func(t *testing.T) {
 		// 创建单个 Token 文件
-		singleTokenContent := `{"token": "token1", "name": "test_token"}`
+		singleTokenContent := `{"token": "token1", "name": "test_token"}` //nolint:gosec
 		singleFile := filepath.Join(tempDir, "single.json")
-		if err := os.WriteFile(singleFile, []byte(singleTokenContent), 0644); err != nil {
+		if err := os.WriteFile(singleFile, []byte(singleTokenContent), 0600); err != nil {
 			t.Fatalf("写入文件失败: %v", err)
 		}
 		defer func() { _ = os.Remove(singleFile) }()
@@ -107,7 +107,7 @@ func TestTokenManager_Load(t *testing.T) {
 	t.Run("加载Token数组文件", func(t *testing.T) {
 		// 清理之前的文件
 		_ = os.RemoveAll(tempDir)
-		_ = os.MkdirAll(tempDir, 0755)
+		_ = os.MkdirAll(tempDir, 0750)
 
 		// 创建 Token 数组文件
 		arrayContent := `[
@@ -115,7 +115,7 @@ func TestTokenManager_Load(t *testing.T) {
 			{"token": "token2", "name": "token2"}
 		]`
 		arrayFile := filepath.Join(tempDir, "array.json")
-		if err := os.WriteFile(arrayFile, []byte(arrayContent), 0644); err != nil {
+		if err := os.WriteFile(arrayFile, []byte(arrayContent), 0600); err != nil {
 			t.Fatalf("写入文件失败: %v", err)
 		}
 
@@ -132,12 +132,12 @@ func TestTokenManager_Load(t *testing.T) {
 	t.Run("加载Map格式文件", func(t *testing.T) {
 		// 清理之前的文件
 		_ = os.RemoveAll(tempDir)
-		_ = os.MkdirAll(tempDir, 0755)
+		_ = os.MkdirAll(tempDir, 0750)
 
 		// 创建 Map 格式文件
 		mapContent := `{"token1": "value1", "token2": "value2"}`
 		mapFile := filepath.Join(tempDir, "map.json")
-		if err := os.WriteFile(mapFile, []byte(mapContent), 0644); err != nil {
+		if err := os.WriteFile(mapFile, []byte(mapContent), 0600); err != nil {
 			t.Fatalf("写入文件失败: %v", err)
 		}
 
@@ -180,7 +180,7 @@ func TestTokenManager_GetRandom(t *testing.T) {
 		{"token": "token3", "name": "token3", "weight": 3}
 	]`
 	tokenFile := filepath.Join(tempDir, "tokens.json")
-	if err := os.WriteFile(tokenFile, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(tokenFile, []byte(content), 0600); err != nil {
 		t.Fatalf("写入文件失败: %v", err)
 	}
 
@@ -192,7 +192,7 @@ func TestTokenManager_GetRandom(t *testing.T) {
 	t.Run("随机获取Token", func(t *testing.T) {
 		// 多次获取，验证都能获取到
 		results := make(map[string]bool)
-		for i := 0; i < 100; i++ {
+		for range 100 {
 			token, err := tm.GetRandom()
 			if err != nil {
 				t.Fatalf("GetRandom() 失败: %v", err)
@@ -233,7 +233,7 @@ func TestTokenManager_GetRandom_WithExpired(t *testing.T) {
 		{"token": "expired_token", "name": "expired", "expires_at": "2020-01-01T00:00:00Z"}
 	]`
 	tokenFile := filepath.Join(tempDir, "tokens.json")
-	if err := os.WriteFile(tokenFile, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(tokenFile, []byte(content), 0600); err != nil {
 		t.Fatalf("写入文件失败: %v", err)
 	}
 
@@ -244,7 +244,7 @@ func TestTokenManager_GetRandom_WithExpired(t *testing.T) {
 
 	t.Run("只返回未过期Token", func(t *testing.T) {
 		// 多次获取，验证只获取到未过期的
-		for i := 0; i < 50; i++ {
+		for range 50 {
 			token, err := tm.GetRandom()
 			if err != nil {
 				t.Fatalf("GetRandom() 失败: %v", err)
@@ -293,7 +293,7 @@ func TestTokenManager_AllExpired(t *testing.T) {
 		{"token": "token2", "name": "token2", "expires_at": "2020-06-01T00:00:00Z"}
 	]`
 	tokenFile := filepath.Join(tempDir, "tokens.json")
-	if err := os.WriteFile(tokenFile, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(tokenFile, []byte(content), 0600); err != nil {
 		t.Fatalf("写入文件失败: %v", err)
 	}
 
@@ -335,7 +335,7 @@ func TestTokenManager_RemoveExpired(t *testing.T) {
 		{"token": "expired_token2", "name": "expired2", "expires_at": "2020-06-01T00:00:00Z"}
 	]`
 	tokenFile := filepath.Join(tempDir, "tokens.json")
-	if err := os.WriteFile(tokenFile, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(tokenFile, []byte(content), 0600); err != nil {
 		t.Fatalf("写入文件失败: %v", err)
 	}
 
@@ -392,7 +392,7 @@ func TestTokenManager_GetSources(t *testing.T) {
 	for i := 1; i <= 3; i++ {
 		content := `{"token": "token", "name": "token"}`
 		fileName := filepath.Join(tempDir, "token"+string(rune('0'+i))+".json")
-		if err := os.WriteFile(fileName, []byte(content), 0644); err != nil {
+		if err := os.WriteFile(fileName, []byte(content), 0600); err != nil {
 			t.Fatalf("写入文件失败: %v", err)
 		}
 	}

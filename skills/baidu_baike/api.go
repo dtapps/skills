@@ -13,15 +13,6 @@ type BaikeResponse struct {
 	Result    json.RawMessage `json:"result,omitempty"`  // 义项内容
 }
 
-// BaikeSimpleResult 百科简洁输出结构体
-type BaikeSimpleResult struct {
-	LemmaTitle    string   `json:"lemma_title,omitempty" description:"词条标题"`
-	Summary       string   `json:"summary,omitempty" description:"词条摘要"`
-	AbstractPlain string   `json:"abstract_plain,omitempty" description:"词条概述"`
-	URL           string   `json:"url,omitempty" description:"词条页URL"`
-	Classify      []string `json:"classify,omitempty" description:"词条分类"`
-}
-
 // BaikeOptions 百科查询选项
 type BaikeOptions struct {
 	SearchType string // 检索类型：lemmaTitle(按词条名)、lemmaId(按词条ID)

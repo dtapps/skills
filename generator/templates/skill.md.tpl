@@ -38,6 +38,12 @@ allowed-tools: "{{.AllowedToolsStr}}"
 
 {{.Description}}
 
+{{- if ne .LongDescription ""}}
+{{if ne .Description .LongDescription }}
+###### {{.LongDescription}}
+{{end}}
+{{- end}}
+
 **用法：**
 ```bash
 {{.Usage}}{{- range .Flags }}{{if .Required}} -{{.Shorthand}} <{{.Name}}>{{end}}{{end}}
@@ -61,4 +67,4 @@ allowed-tools: "{{.AllowedToolsStr}}"
 | `{{.Name}}` | {{.Description}} |
 {{- end }}
 {{- end }}
-{{- end }}
+{{ end }}

@@ -4,7 +4,7 @@ title: "腾讯新闻"
 description: "7×24 新闻资讯搜索工具，聚焦中国国内信息和国际热点。支持新闻搜索，包括热点新闻、早报晚报、实时资讯、领域新闻和天气信息查询。当用户需要搜索新闻、新闻热榜、新闻早晚报、订阅新闻推送、获取相关新闻资讯和查询天气信息时使用"
 metadata:
   author: "dtapp"
-  date: "2026-04-28 22:09:54"
+  date: "2026-04-29 20:56:19"
   version: "1.0.9"
 ---
 
@@ -44,6 +44,7 @@ dtskills tencent-news evening
 | `timestamp` | 时间戳 |
 | `title` | 标题 |
 | `url` | 链接 |
+
 ### hot
 
 获取热点新闻
@@ -68,6 +69,7 @@ dtskills tencent-news hot
 | `timestamp` | 时间戳 |
 | `title` | 标题 |
 | `url` | 链接 |
+
 ### morning
 
 获取新闻早报
@@ -91,6 +93,7 @@ dtskills tencent-news morning
 | `timestamp` | 时间戳 |
 | `title` | 标题 |
 | `url` | 链接 |
+
 ### search
 
 搜索新闻
@@ -117,3 +120,4 @@ dtskills tencent-news search -q <query>
 | `timestamp` | 时间戳 |
 | `title` | 标题 |
 | `url` | 链接 |
+

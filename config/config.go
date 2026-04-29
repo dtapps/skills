@@ -18,6 +18,8 @@ const (
 	BaiduAPIKeyEnv = "BAIDU_API_KEY"
 	// TencentNewsAPIKeyEnv 腾讯新闻 API Key 环境变量
 	TencentNewsAPIKeyEnv = "TENCENT_NEWS_API_KEY"
+	// WeiboAPITokenEnv 微博API Token 环境变量
+	WeiboAPITokenEnv = "WEIBO_API_TOKEN"
 )
 
 // GetWorkDirEnv 获取工作目录环境变量名 (动态生成: {PROJECT_NAME}_WORK_DIR)
@@ -31,6 +33,8 @@ const (
 	KeyBaiduAPIKey = "api_keys.baidu"
 	// KeyTencentNewsAPIKey 腾讯新闻 API Key 配置键
 	KeyTencentNewsAPIKey = "api_keys.tencent_news"
+	// KeyWeiboAPIToken 微博 API Token 配置键
+	KeyWeiboAPIToken = "api_tokens.weibo"
 	// KeyRestyDebug Resty Debug 配置键
 	KeyRestyDebug = "debug.resty"
 	// KeySkillsPath 技能包路径配置键
@@ -78,6 +82,7 @@ func LoadConfig() error {
 	// 绑定环境变量
 	_ = viper.BindEnv(KeyBaiduAPIKey, BaiduAPIKeyEnv)
 	_ = viper.BindEnv(KeyTencentNewsAPIKey, TencentNewsAPIKeyEnv)
+	_ = viper.BindEnv(KeyWeiboAPIToken, WeiboAPITokenEnv)
 
 	// 读取配置文件
 	err := viper.ReadInConfig()
@@ -107,6 +112,11 @@ func GetTencentNewsAPIKey() string {
 	return viper.GetString(KeyTencentNewsAPIKey)
 }
 
+// GetWeiboAPIToken 获取微博 API Token
+func GetWeiboAPIToken() string {
+	return viper.GetString(KeyWeiboAPIToken)
+}
+
 // IsRestyDebugEnabled 是否开启 Resty Debug 模式
 // 注意：此参数只能从配置文件读取，不能通过环境变量设置
 func IsRestyDebugEnabled() bool {
@@ -126,6 +136,11 @@ func SetBaiduAPIKey(apiKey string) {
 // SetTencentNewsAPIKey 设置腾讯新闻 API Key
 func SetTencentNewsAPIKey(apiKey string) {
 	viper.Set(KeyTencentNewsAPIKey, apiKey)
+}
+
+// SetWeiboAPIToken 设置微博 API Token
+func SetWeiboAPIToken(apiToken string) {
+	viper.Set(KeyWeiboAPIToken, apiToken)
 }
 
 // SetSkillsPath 设置技能包路径
@@ -157,6 +172,18 @@ func getTencentNewsKeyManager() *APIKeyManager {
 	return tencentNewsKeyManager
 }
 
+// weiboTokenManager 微博 API Token 管理器（懒加载）
+var weiboTokenManager *APIKeyManager
+var weiboTokenOnce sync.Once
+
+// getWeiboTokenManager 获取微博 Token 管理器
+func getWeiboTokenManager() *APIKeyManager {
+	weiboTokenOnce.Do(func() {
+		weiboTokenManager = NewAPIKeyManager(KeyWeiboAPIToken, WeiboAPITokenEnv)
+	})
+	return weiboTokenManager
+}
+
 // GetBaiduAPIKeyRandom 随机获取一个百度 API Key
 func GetBaiduAPIKeyRandom() string {
 	return getBaiduKeyManager().GetRandom()
@@ -185,6 +212,21 @@ func GetTencentNewsAPIKeyNext() string {
 // GetTencentNewsAPIKeys 获取所有腾讯新闻 API Key
 func GetTencentNewsAPIKeys() []string {
 	return getTencentNewsKeyManager().GetAll()
+}
+
+// GetWeiboAPITokenRandom 随机获取一个微博 API Token
+func GetWeiboAPITokenRandom() string {
+	return getWeiboTokenManager().GetRandom()
+}
+
+// GetWeiboAPITokenNext 轮询获取下一个微博 API Token
+func GetWeiboAPITokenNext() string {
+	return getWeiboTokenManager().GetNext()
+}
+
+// GetWeiboAPITokens 获取所有微博 API Token
+func GetWeiboAPITokens() []string {
+	return getWeiboTokenManager().GetAll()
 }
 
 // SaveConfig 保存配置到文件

@@ -140,13 +140,13 @@ tencent-weather-forecast:
 	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . tencent-weather forecast --adcode "$(ADCODE)" --type "$(TYPE)" $(VERBOSE)
 
 # 获取 腾讯天气（空气质量）
-# make tencent-weather-airquality ADCODE=110000 
-# make tencent-weather-airquality ADCODE=110000 VERBOSE="-v"
+# make tencent-weather-air-quality ADCODE=110000 
+# make tencent-weather-air-quality ADCODE=110000 VERBOSE="-v"
 .PHONY: tencent-weather-airquality
-tencent-weather-airquality:
+tencent-weather-air-quality:
 	@echo "[获取] 腾讯天气（空气质量）..."
 	@mkdir -p $(DTSKILLS_WORK_DIR)
-	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . tencent-weather airquality --adcode "$(ADCODE)" $(VERBOSE)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . tencent-weather air-quality --adcode "$(ADCODE)" $(VERBOSE)
 
 # 获取 腾讯天气（IP定位获取城市）
 # make tencent-weather-ip2city
@@ -166,6 +166,28 @@ jiaozhen-factcheck-check:
 	@echo "[查证] 腾讯较真事实查证..."
 	@mkdir -p $(DTSKILLS_WORK_DIR)
 	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . jiaozhen-factcheck check --query "$(QUERY)" $(VERBOSE)
+
+#####################
+
+# 微博搜索 获取微博热搜榜
+# make weibo-search-hot-search CATEGORY="主榜"
+# make weibo-search-hot-search CATEGORY="文娱榜"
+# make weibo-search-hot-search CATEGORY="社会榜"
+# make weibo-search-hot-search CATEGORY="主榜" VERBOSE="-v"
+.PHONY: weibo-search-hot-search
+weibo-search-hot-search:
+	@echo "[微博搜索] 获取微博热搜榜..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . weibo-search hot-search --category "$(CATEGORY)" $(VERBOSE)
+
+# 微博搜索 执行微博智搜
+# make weibo-search-smart-search QUERY="小米"
+# make weibo-search-smart-search QUERY="小米" VERBOSE="-v"
+.PHONY: weibo-search-smart-search
+weibo-search-smart-search:
+	@echo "[微博搜索] 执行微博智搜..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . weibo-search smart-search --query "$(QUERY)" $(VERBOSE)
 
 #####################
 ## 检查相关

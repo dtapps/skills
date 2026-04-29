@@ -13,6 +13,12 @@ const (
 	APIBaseURL = "https://openapi.inews.qq.com"
 	// APITimeout API 请求超时时间
 	APITimeout = 30 * time.Second
+	// RetryCount 超时重试次数
+	RetryCount = 3
+	// RetryWaitTime 首次重试等待时间
+	RetryWaitTime = 1 * time.Second
+	// RetryMaxWaitTime 最大重试等待时间
+	RetryMaxWaitTime = 5 * time.Second
 )
 
 // BaseRsp 基础响应结构
@@ -26,6 +32,9 @@ func getHTTPClient(caller string) *resty.Client {
 	client := resty.New()
 	client.SetBaseURL(APIBaseURL)
 	client.SetTimeout(APITimeout)
+	client.SetRetryCount(RetryCount)
+	client.SetRetryWaitTime(RetryWaitTime)
+	client.SetRetryMaxWaitTime(RetryMaxWaitTime)
 	client.SetHeader("Content-Type", "application/json")
 	client.SetHeader("User-Agent", "tencent-news-cli/1.0.0")
 	client.SetHeader("Caller-Skill", caller)

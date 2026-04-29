@@ -34,10 +34,11 @@ func extractCommandsFromCobra(cmd *cobra.Command) []types.Command {
 
 	for _, subCmd := range cmd.Commands() {
 		command := types.Command{
-			Name:        subCmd.Name(),
-			Description: subCmd.Short,
-			Usage:       types.ProjectName + " " + cmd.Name() + " " + subCmd.Use,
-			Flags:       extractFlagsFromCobra(subCmd),
+			Name:            subCmd.Name(),
+			Description:     subCmd.Short,
+			LongDescription: subCmd.Long,
+			Usage:           types.ProjectName + " " + cmd.Name() + " " + subCmd.Use,
+			Flags:           extractFlagsFromCobra(subCmd),
 		}
 		commands = append(commands, command)
 	}

@@ -4,7 +4,7 @@ title: "腾讯天气"
 description: "天气信息查询工具，覆盖中国市级和区县级行政区。当用户查询实况天气、天气预报信息时使用。"
 metadata:
   author: "TencentNews"
-  date: "2026-04-28 22:09:54"
+  date: "2026-04-29 20:56:19"
   version: "1.0.0"
 ---
 
@@ -21,13 +21,13 @@ dtskills tencent-weather [command] [flags]
 ```
 
 ## 命令
-### airquality
+### air-quality
 
 获取天气空气质量
 
 **用法：**
 ```bash
-dtskills tencent-weather airquality -a <adcode>
+dtskills tencent-weather air-quality -a <adcode>
 ```
 **参数：**
 
@@ -35,6 +35,21 @@ dtskills tencent-weather airquality -a <adcode>
 |------|------|------|------|--------|
 | `--adcode` | `-a` | 地区编码（如北京：110000） | 是 | - |
 | `--verbose` | `-v` | 输出完整结果 | 否 | false |
+
+**输出字段：**
+
+| 字段名 | 描述 |
+|--------|------|
+| `aqi` | AQI 指数 |
+| `aqi_name` | 空气质量名称 |
+| `co` | CO |
+| `no2` | NO2 |
+| `o3` | O3 |
+| `pm10` | PM10 |
+| `pm25` | PM2.5 |
+| `so2` | SO2 |
+| `update_time` |  |
+
 ### current
 
 获取实时天气
@@ -62,9 +77,11 @@ dtskills tencent-weather current -a <adcode>
 | `weather_short` | 天气简写 |
 | `wind_direction_name` | 风向 |
 | `wind_power` | 风力 |
+
 ### forecast
 
 获取天气预报
+###### 获取天气预报，支持 forecast_1h(1小时预报) 或 forecast_24h(24小时预报)
 
 **用法：**
 ```bash
@@ -96,6 +113,7 @@ dtskills tencent-weather forecast -a <adcode>
 | `night_wind_direction` | 夜晚风向 |
 | `night_wind_power` | 夜晚风力 |
 | `time` | 时间 |
+
 ### ip2city
 
 IP定位获取城市
@@ -115,3 +133,4 @@ dtskills tencent-weather ip2city
 | `district_code` | 区县编码 |
 | `ip` | IP 地址 |
 | `province` | 省份 |
+

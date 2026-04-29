@@ -13,10 +13,10 @@ import (
 
 // Token 定义标准的 Token 结构
 type Token struct {
-	Token     string    `json:"token"`      // Token 值
-	Name      string    `json:"name"`       // Token 名称/标识
-	ExpiresAt time.Time `json:"expires_at"` // 过期时间（可选）
-	Weight    int       `json:"weight"`     // 权重，用于随机选择（默认 1）
+	Token     string    `json:"token"`            // Token 值
+	Name      string    `json:"name"`             // Token 名称/标识
+	ExpiresAt time.Time `json:"expires_at"`       // 过期时间（可选）
+	Weight    int       `json:"weight,omitempty"` // 权重，用于随机选择（默认 1）
 }
 
 // IsExpired 检查 Token 是否已过期
@@ -68,6 +68,7 @@ func (tm *TokenManager) Load() error {
 	}
 
 	// 检查目录是否存在
+	dirPath = filepath.Clean(dirPath)
 	info, err := os.Stat(dirPath)
 	if os.IsNotExist(err) {
 		return fmt.Errorf("配置目录不存在: %s", dirPath)
@@ -108,7 +109,8 @@ func (tm *TokenManager) Load() error {
 
 // loadTokenFile 加载单个 Token 文件
 func (tm *TokenManager) loadTokenFile(path string) error {
-	data, err := os.ReadFile(path)
+	path = filepath.Clean(path)
+	data, err := os.ReadFile(path) //nolint:gosec
 	if err != nil {
 		return err
 	}

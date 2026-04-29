@@ -50,6 +50,7 @@ func (ecm *ExternalConfigManager) Load() error {
 	}
 
 	// 检查目录是否存在
+	dirPath = filepath.Clean(dirPath)
 	info, err := os.Stat(dirPath)
 	if os.IsNotExist(err) {
 		return fmt.Errorf("配置目录不存在: %s", dirPath)

@@ -4,7 +4,7 @@ title: "百度搜索"
 description: "百度搜索服务基于百度搜索能力与AI技术，专为生成式AI提供全网实时信息检索服务，具备海量内容站点、高权威性，强时效性，提供全新的搜索体验。"
 metadata:
   author: "dtapp"
-  date: "2026-04-28 22:09:54"
+  date: "2026-04-29 20:56:19"
   version: "1.1.4"
 ---
 
@@ -49,3 +49,4 @@ dtskills baidu-search search -q <query>
 | `type` | 检索资源类型 |
 | `url` | 网页地址 |
 | `website` | 站点名称 |
+

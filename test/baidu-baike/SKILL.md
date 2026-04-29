@@ -4,7 +4,7 @@ title: "百度百科"
 description: "百度百科提供百科官方内容检索服务，帮助用户快速、全面地获取权威的百科信息。支持百科词条义项查询、词条详情查询以及秒懂百科视频获取。适用于AI问答、内容创作、教育教学、知识检索等场景，为模型提供可信的知识支撑。"
 metadata:
   author: "dtapp"
-  date: "2026-04-28 22:09:54"
+  date: "2026-04-29 20:56:19"
   version: "1.1.0"
 ---
 
@@ -46,3 +46,4 @@ dtskills baidu-baike search -k <key>
 | `lemma_title` | 词条标题 |
 | `summary` | 词条摘要 |
 | `url` | 词条页URL |
+
