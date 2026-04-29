@@ -412,10 +412,9 @@ package-win-amd64: build-windows-amd64
 	@echo "[打包] 创建 Windows MSI 包 (AMD64)..."
 	@mkdir -p dist
 	@sed -e 's|$${VERSION}|$(MSI_VERSION)|g' \
-	     -e 's|$${PLATFORM}|x64|g' \
 	     -e 's|Source="dtskills.exe"|Source="dist/dtskills-windows-amd64.exe"|g' \
 	     installer.wxs > dist/installer-amd64.wxs
-	wixl dist/installer-amd64.wxs -o dist/dtskills_amd64.msi
+	wixl -v -a x64 dist/installer-amd64.wxs -o dist/dtskills_amd64.msi
 	@rm -f dist/installer-amd64.wxs
 	@echo "✓ MSI 包已创建: dist/dtskills_amd64.msi"
 
@@ -425,10 +424,9 @@ package-win-arm64: build-windows-arm64
 	@echo "[打包] 创建 Windows MSI 包 (ARM64)..."
 	@mkdir -p dist
 	@sed -e 's|$${VERSION}|$(MSI_VERSION)|g' \
-	     -e 's|$${PLATFORM}|arm64|g' \
 	     -e 's|Source="dtskills.exe"|Source="dist/dtskills-windows-arm64.exe"|g' \
 	     installer.wxs > dist/installer-arm64.wxs
-	wixl dist/installer-arm64.wxs -o dist/dtskills_arm64.msi
+	wixl -v -a arm64 dist/installer-arm64.wxs -o dist/dtskills_arm64.msi
 	@rm -f dist/installer-arm64.wxs
 	@echo "✓ MSI 包已创建: dist/dtskills_arm64.msi"
 
@@ -438,10 +436,9 @@ package-win-386: build-windows-386
 	@echo "[打包] 创建 Windows MSI 包 (386)..."
 	@mkdir -p dist
 	@sed -e 's|$${VERSION}|$(MSI_VERSION)|g' \
-	     -e 's|$${PLATFORM}|x86|g' \
 	     -e 's|Source="dtskills.exe"|Source="dist/dtskills-windows-386.exe"|g' \
 	     installer.wxs > dist/installer-386.wxs
-	wixl dist/installer-386.wxs -o dist/dtskills_386.msi
+	wixl -v -a x86 dist/installer-386.wxs -o dist/dtskills_386.msi
 	@rm -f dist/installer-386.wxs
 	@echo "✓ MSI 包已创建: dist/dtskills_386.msi"
 

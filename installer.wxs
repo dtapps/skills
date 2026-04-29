@@ -4,8 +4,8 @@
              UpgradeCode="D1234567-89AB-CDEF-0123-456789ABCDEF" 
              Language="2052" Codepage="936" Version="${VERSION}">
 
-        <Package InstallerVersion="200" Compressed="yes" 
-                 InstallScope="perUser" Platform="${PLATFORM}" />
+        <!-- 删掉 Platform 属性，解决 GLib-GObject-CRITICAL 报错 -->
+        <Package InstallerVersion="200" Compressed="yes" InstallScope="perUser" />
 
         <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="已安装更高版本。" />
         <MediaTemplate EmbedCab="yes" />
@@ -18,16 +18,20 @@
 
         <DirectoryRef Id="INSTALLDIR">
             <Component Id="MainExecutable" Guid="*">
+                <!-- 唯一 KeyPath，确保安装程序能正确追踪文件 -->
                 <File Id="dtskills.exe" Source="dtskills.exe" KeyPath="yes" />
 
+                <!-- 写入用户级环境变量，无需管理员权限 -->
                 <Environment Id="PATH" Name="PATH" Value="[INSTALLDIR]"
                              Permanent="no" Part="last" Action="set" System="no" />
                 
-                <RegistryValue Root="HKCU" Key="Software\dtapp\dtskills" Name="installed" Type="integer" Value="1" KeyPath="yes" />
+                <!-- 注册表项作为卸载依据，KeyPath 必须为 no 避免冲突 -->
+                <RegistryValue Root="HKCU" Key="Software\dtapp\dtskills" Name="installed" Type="integer" Value="1" KeyPath="no" />
             </Component>
         </DirectoryRef>
 
         <Feature Id="MainFeature" Level="1">
+            <ComponentGroupRef Id="MainGroup" /> 
             <ComponentRef Id="MainExecutable" />
         </Feature>
     </Product>
