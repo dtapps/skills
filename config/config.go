@@ -11,11 +11,36 @@ import (
 	"github.com/spf13/viper"
 )
 
+// 环境变量名
+const (
+	// BaiduAPIKeyEnv 百度 API Key 环境变量
+	BaiduAPIKeyEnv = "BAIDU_API_KEY"
+	// TencentNewsAPIKeyEnv 腾讯新闻 API Key 环境变量
+	TencentNewsAPIKeyEnv = "TENCENT_NEWS_API_KEY"
+)
+
+// getWorkDirEnv 获取工作目录环境变量名 (动态生成: {PROJECT_NAME}_WORK_DIR)
+func getWorkDirEnv() string {
+	return strings.ToUpper(types.ProjectName) + "_WORK_DIR"
+}
+
+// 配置键常量
+const (
+	// KeyBaiduAPIKey 百度 API Key 配置键
+	KeyBaiduAPIKey = "api_keys.baidu"
+	// KeyTencentNewsAPIKey 腾讯新闻 API Key 配置键
+	KeyTencentNewsAPIKey = "api_keys.tencent_news"
+	// KeyRestyDebug Resty Debug 配置键
+	KeyRestyDebug = "debug.resty"
+	// KeySkillsPath 技能包路径配置键
+	KeySkillsPath = "skills.path"
+)
+
 // resolveWorkDir 解析工作目录（不依赖 viper 状态）
 // 优先级：DTSKILLS_WORK_DIR > 用户配置目录 > 当前目录
 func resolveWorkDir() string {
 	// 检查环境变量
-	workDir := os.Getenv(strings.ToUpper(types.ProjectName) + "_WORK_DIR")
+	workDir := os.Getenv(getWorkDirEnv())
 	if workDir != "" {
 		return workDir
 	}
@@ -50,8 +75,8 @@ func LoadConfig() error {
 	// 环境变量前缀
 	viper.SetEnvPrefix(strings.ToUpper(types.ProjectName))
 	// 绑定环境变量
-	_ = viper.BindEnv("api_keys.baidu", "BAIDU_API_KEY")
-	_ = viper.BindEnv("api_keys.tencent_news", "TENCENT_NEWS_API_KEY")
+	_ = viper.BindEnv(KeyBaiduAPIKey, BaiduAPIKeyEnv)
+	_ = viper.BindEnv(KeyTencentNewsAPIKey, TencentNewsAPIKeyEnv)
 
 	// 读取配置文件
 	err := viper.ReadInConfig()
@@ -73,38 +98,38 @@ func SetConfigFile(path string) {
 
 // GetBaiduAPIKey 获取百度 API Key
 func GetBaiduAPIKey() string {
-	return viper.GetString("api_keys.baidu")
+	return viper.GetString(KeyBaiduAPIKey)
 }
 
 // GetTencentNewsAPIKey 获取腾讯新闻 API Key
 func GetTencentNewsAPIKey() string {
-	return viper.GetString("api_keys.tencent_news")
+	return viper.GetString(KeyTencentNewsAPIKey)
 }
 
 // IsRestyDebugEnabled 是否开启 Resty Debug 模式
 // 注意：此参数只能从配置文件读取，不能通过环境变量设置
 func IsRestyDebugEnabled() bool {
-	return viper.GetBool("debug.resty")
+	return viper.GetBool(KeyRestyDebug)
 }
 
 // GetSkillsPath 获取技能包路径
 func GetSkillsPath() string {
-	return viper.GetString("skills.path")
+	return viper.GetString(KeySkillsPath)
 }
 
 // SetBaiduAPIKey 设置百度 API Key
 func SetBaiduAPIKey(apiKey string) {
-	viper.Set("api_keys.baidu", apiKey)
+	viper.Set(KeyBaiduAPIKey, apiKey)
 }
 
 // SetTencentNewsAPIKey 设置腾讯新闻 API Key
 func SetTencentNewsAPIKey(apiKey string) {
-	viper.Set("api_keys.tencent_news", apiKey)
+	viper.Set(KeyTencentNewsAPIKey, apiKey)
 }
 
 // SetSkillsPath 设置技能包路径
 func SetSkillsPath(path string) {
-	viper.Set("skills.path", path)
+	viper.Set(KeySkillsPath, path)
 }
 
 // SaveConfig 保存配置到文件
@@ -174,10 +199,10 @@ func GetConfigFile() string {
 }
 
 // GetWorkDir 获取工作目录
-// 优先级：DTSKILLS_WORK_DIR > 配置文件所在目录 > 用户配置目录 > 当前目录
+// 优先级：{PROJECT_NAME}_WORK_DIR > 配置文件所在目录 > 用户配置目录 > 当前目录
 func GetWorkDir() string {
 	// 检查环境变量
-	workDir := os.Getenv(strings.ToUpper(types.ProjectName) + "_WORK_DIR")
+	workDir := os.Getenv(getWorkDirEnv())
 	if workDir != "" {
 		return workDir
 	}
