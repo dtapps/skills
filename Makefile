@@ -444,5 +444,5 @@ package-win-386: build-windows-386
 
 # 打包所有 Windows MSI 包
 .PHONY: package-win-all
-package-win-all: package-win-amd64 package-win-arm64 package-win-386
+package-win-all: package-win-amd64 package-win-386
 	@echo "✓ 所有 Windows MSI 包已创建"
