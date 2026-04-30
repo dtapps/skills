@@ -78,7 +78,6 @@ type CommandOutputField struct {
 func GetCommandOutputFields() []CommandOutputField {
 	return []CommandOutputField{
 		{CommandName: CmdHotSearch, FieldType: HotSearchSimpleItem{}},
-		{CommandName: CmdSmartSearch, FieldType: SearchSimpleResult{}},
 	}
 }
 

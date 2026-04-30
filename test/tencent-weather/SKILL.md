@@ -4,7 +4,7 @@ title: "腾讯天气"
 description: "天气信息查询工具，覆盖中国市级和区县级行政区。当用户查询实况天气、天气预报信息时使用。"
 metadata:
   author: "TencentNews"
-  date: "2026-04-29 20:56:19"
+  date: "2026-04-30 11:55:15"
   version: "1.0.0"
 ---
 
@@ -24,6 +24,7 @@ dtskills tencent-weather [command] [flags]
 ### air-quality
 
 获取天气空气质量
+
 
 **用法：**
 ```bash
@@ -81,7 +82,9 @@ dtskills tencent-weather current -a <adcode>
 ### forecast
 
 获取天气预报
+
 ###### 获取天气预报，支持 forecast_1h(1小时预报) 或 forecast_24h(24小时预报)
+
 
 **用法：**
 ```bash
