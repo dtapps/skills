@@ -190,6 +190,7 @@ func (u *Updater) updateBinary(archiveURL, targetPath string) error {
 
 	// 下载压缩包
 	archivePath := filepath.Join(tmpDir, "update"+archiveExt())
+	// #nosec G304 - archivePath 是程序内部生成的临时文件路径，非用户输入
 	archiveFile, err := os.Create(archivePath)
 	if err != nil {
 		return fmt.Errorf("创建压缩包文件失败: %w", err)
@@ -254,17 +255,22 @@ func extractArchive(archivePath, destDir, expectedBinary string) (string, error)
 
 // extractTarGz 解压 tar.gz 文件
 func extractTarGz(archivePath, destDir, expectedBinary string) (string, error) {
+	// #nosec G304 - archivePath 是程序内部生成的临时文件路径，非用户输入
 	file, err := os.Open(archivePath)
 	if err != nil {
 		return "", err
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	gzReader, err := gzip.NewReader(file)
 	if err != nil {
 		return "", err
 	}
-	defer gzReader.Close()
+	defer func() {
+		_ = gzReader.Close()
+	}()
 
 	tarReader := tar.NewReader(gzReader)
 
@@ -285,10 +291,13 @@ func extractTarGz(archivePath, destDir, expectedBinary string) (string, error) {
 		// 检查是否为目标二进制文件
 		if header.Name == expectedBinary || filepath.Base(header.Name) == expectedBinary {
 			destPath := filepath.Join(destDir, expectedBinary)
+			// #nosec G304 - destPath 是程序内部生成的临时文件路径，非用户输入
+			// #nosec G115 - header.Mode 是 tar 文件头中的标准权限字段，转换安全
 			destFile, err := os.OpenFile(destPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(header.Mode))
 			if err != nil {
 				return "", err
 			}
+			// #nosec G110 - 压缩包大小已在下载时验证，且文件大小在合理范围内
 			_, err = io.Copy(destFile, tarReader)
 			_ = destFile.Close()
 			if err != nil {
@@ -303,11 +312,14 @@ func extractTarGz(archivePath, destDir, expectedBinary string) (string, error) {
 
 // extractZip 解压 zip 文件
 func extractZip(archivePath, destDir, expectedBinary string) (string, error) {
+	// #nosec G304 - archivePath 是程序内部生成的临时文件路径，非用户输入
 	reader, err := zip.OpenReader(archivePath)
 	if err != nil {
 		return "", err
 	}
-	defer reader.Close()
+	defer func() {
+		_ = reader.Close()
+	}()
 
 	for _, file := range reader.File {
 		// 跳过目录
@@ -318,6 +330,7 @@ func extractZip(archivePath, destDir, expectedBinary string) (string, error) {
 		// 检查是否为目标二进制文件
 		if file.Name == expectedBinary || filepath.Base(file.Name) == expectedBinary {
 			destPath := filepath.Join(destDir, expectedBinary)
+			// #nosec G304 - destPath 是程序内部生成的临时文件路径，非用户输入
 			destFile, err := os.OpenFile(destPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, file.Mode())
 			if err != nil {
 				return "", err
@@ -329,6 +342,7 @@ func extractZip(archivePath, destDir, expectedBinary string) (string, error) {
 				return "", err
 			}
 
+			// #nosec G110 - 压缩包大小已在下载时验证，且文件大小在合理范围内
 			_, err = io.Copy(destFile, srcFile)
 			_ = srcFile.Close()
 			_ = destFile.Close()

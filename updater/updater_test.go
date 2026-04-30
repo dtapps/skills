@@ -1,6 +1,11 @@
 package updater
 
 import (
+	"archive/tar"
+	"archive/zip"
+	"compress/gzip"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -95,4 +100,131 @@ func TestBinaryExt(t *testing.T) {
 	default:
 		t.Errorf("Unexpected binary extension: %q", ext)
 	}
+}
+
+func TestExtractArchive(t *testing.T) {
+	// 创建临时目录
+	tmpDir := t.TempDir()
+
+	// 测试 tar.gz 解压（Linux/macOS）
+	if archiveExt() == ".tar.gz" {
+		testExtractTarGz(t, tmpDir)
+	}
+
+	// 测试 zip 解压（Windows）
+	if archiveExt() == ".zip" {
+		testExtractZip(t, tmpDir)
+	}
+}
+
+func testExtractTarGz(t *testing.T, tmpDir string) {
+	// 创建一个测试用的 tar.gz 文件
+	archivePath := filepath.Join(tmpDir, "test.tar.gz")
+	if err := createTestTarGz(archivePath); err != nil {
+		t.Fatalf("创建测试 tar.gz 失败: %v", err)
+	}
+
+	// 测试解压
+	extractedPath, err := extractArchive(archivePath, tmpDir, "testbin")
+	if err != nil {
+		t.Fatalf("解压 tar.gz 失败: %v", err)
+	}
+
+	// 验证文件存在
+	if _, err := os.Stat(extractedPath); os.IsNotExist(err) {
+		t.Errorf("解压后的文件不存在: %s", extractedPath)
+	}
+
+	t.Logf("Successfully extracted tar.gz to: %s", extractedPath)
+}
+
+func testExtractZip(t *testing.T, tmpDir string) {
+	// 创建一个测试用的 zip 文件
+	archivePath := filepath.Join(tmpDir, "test.zip")
+	if err := createTestZip(archivePath); err != nil {
+		t.Fatalf("创建测试 zip 失败: %v", err)
+	}
+
+	// 测试解压
+	extractedPath, err := extractArchive(archivePath, tmpDir, "testbin.exe")
+	if err != nil {
+		t.Fatalf("解压 zip 失败: %v", err)
+	}
+
+	// 验证文件存在
+	if _, err := os.Stat(extractedPath); os.IsNotExist(err) {
+		t.Errorf("解压后的文件不存在: %s", extractedPath)
+	}
+
+	t.Logf("Successfully extracted zip to: %s", extractedPath)
+}
+
+// createTestTarGz 创建测试用的 tar.gz 文件
+func createTestTarGz(archivePath string) error {
+	// #nosec G304 - archivePath 是测试生成的临时文件路径，非用户输入
+	file, err := os.Create(archivePath)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = file.Close()
+	}()
+
+	gzWriter := gzip.NewWriter(file)
+	defer func() {
+		_ = gzWriter.Close()
+	}()
+
+	tarWriter := tar.NewWriter(gzWriter)
+	defer func() {
+		_ = tarWriter.Close()
+	}()
+
+	// 添加一个测试文件
+	content := []byte("test binary content")
+	header := &tar.Header{
+		Name: "testbin",
+		Mode: 0755,
+		Size: int64(len(content)),
+	}
+	if err := tarWriter.WriteHeader(header); err != nil {
+		return err
+	}
+	if _, err := tarWriter.Write(content); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// createTestZip 创建测试用的 zip 文件
+func createTestZip(archivePath string) error {
+	// #nosec G304 - archivePath 是测试生成的临时文件路径，非用户输入
+	file, err := os.Create(archivePath)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = file.Close()
+	}()
+
+	zipWriter := zip.NewWriter(file)
+	defer func() {
+		_ = zipWriter.Close()
+	}()
+
+	// 添加一个测试文件
+	content := []byte("test binary content")
+	writer, err := zipWriter.CreateHeader(&zip.FileHeader{
+		Name:   "testbin.exe",
+		Method: zip.Deflate,
+	})
+	if err != nil {
+		return err
+	}
+	if _, err := writer.Write(content); err != nil {
+		return err
+	}
+
+	return nil
 }
