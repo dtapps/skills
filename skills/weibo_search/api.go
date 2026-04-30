@@ -15,7 +15,7 @@ type HotSearchResponse struct {
 // GetHotSearchOptions 获取微博热搜榜选项
 type GetHotSearchOptions struct {
 	Category string // 榜单类型
-	Limit    int    // 返回结果数量
+	Count    int    // 返回结果数量
 }
 
 // GetHotSearch 获取微博热搜榜
@@ -25,8 +25,8 @@ func GetHotSearch(opts GetHotSearchOptions) (*HotSearchResponse, error) {
 	req := client.R().
 		SetQueryParam("category", opts.Category)
 
-	if opts.Limit > 0 {
-		req.SetQueryParam("count", fmt.Sprintf("%d", opts.Limit))
+	if opts.Count > 0 {
+		req.SetQueryParam("count", fmt.Sprintf("%d", opts.Count))
 	}
 
 	resp, err := req.Get("/open/weibo/hot_search")

@@ -96,7 +96,7 @@ func (s *WeiboSearchSkill) requireAPIToken(cmd *cobra.Command) (string, bool) {
 func (s *WeiboSearchSkill) createHotSearchCmd() *cobra.Command {
 	var (
 		category string
-		limit    int
+		count    int
 		verbose  bool
 	)
 
@@ -114,7 +114,7 @@ func (s *WeiboSearchSkill) createHotSearchCmd() *cobra.Command {
 
 			opts := GetHotSearchOptions{
 				Category: category,
-				Limit:    limit,
+				Count:    count,
 			}
 
 			resp, err := GetHotSearch(opts)
@@ -150,7 +150,7 @@ func (s *WeiboSearchSkill) createHotSearchCmd() *cobra.Command {
 
 	// 定义 flags
 	cmd.Flags().StringVarP(&category, "category", "t", "主榜", "榜单类型（中文）：主榜、文娱榜、社会榜、生活榜、acg榜、科技榜、体育榜")
-	cmd.Flags().IntVarP(&limit, "limit", "l", 50, "返回结果数量")
+	cmd.Flags().IntVarP(&count, "count", "c", 50, "返回结果数量")
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "输出完整结果")
 
 	// 标记必填参数
