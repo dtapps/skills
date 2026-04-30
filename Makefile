@@ -230,12 +230,19 @@ check:
 ## 构建相关
 #####################
 
+# 功能开关（设置为 1 开启，0 关闭）
+ENABLE_UPX ?= 1
+ENABLE_ARCHIVE ?= 1
+
 # 检测是否存在 upx
 UPX = $(shell command -v upx 2> /dev/null)
+# 检测是否存在 tar 和 zip
+TAR = $(shell command -v tar 2> /dev/null)
+ZIP = $(shell command -v zip 2> /dev/null)
 
 # 定义压缩逻辑：参数 $(1) 为文件路径
 define compress_file
-	@if [ "$(UPX)" ]; then \
+	@if [ "$(ENABLE_UPX)" = "1" ] && [ "$(UPX)" ]; then \
 		FILE_SIZE=$$(stat -c%s "$(1)" 2>/dev/null || stat -f%z "$(1)"); \
 		ORIG_SIZE_H=$$(du -h "$(1)" | cut -f1); \
 		\
@@ -259,30 +266,48 @@ define compress_file
 		else \
 			echo "  ⚠️  UPX 压缩跳过: $(1) ($$ERR_MSG)"; \
 		fi \
+	elif [ "$(ENABLE_UPX)" = "1" ] && [ ! "$(UPX)" ]; then \
+		echo "  ⏭️  UPX 未安装，跳过压缩"; \
+	elif [ "$(ENABLE_UPX)" = "0" ]; then \
+		echo "  ⏭️  UPX 已禁用"; \
 	fi
 endef
 
 # 定义打包压缩逻辑：参数 $(1) 为源文件路径, $(2) 为目标平台 (如 linux-amd64)
 # Linux/macOS 使用 tar.gz, Windows 使用 zip
 define archive_binary
-	@SOURCE_FILE=$(1); \
-	PLATFORM=$(2); \
-	ARCHIVE_NAME="$(BUILD_DIR)/$(BINARY_NAME)-$${PLATFORM}"; \
-	\
-	if echo "$${PLATFORM}" | grep -q "windows"; then \
-		ARCHIVE_NAME="$${ARCHIVE_NAME}.zip"; \
-		echo "  📦 正在打包 Windows 压缩包: $${ARCHIVE_NAME}..."; \
-		cd $(BUILD_DIR) && zip -q "$$(basename $${ARCHIVE_NAME})" "$$(basename $${SOURCE_FILE})"; \
-		cd ..; \
-	else \
-		ARCHIVE_NAME="$${ARCHIVE_NAME}.tar.gz"; \
-		echo "  📦 正在打包 Unix 压缩包: $${ARCHIVE_NAME}..."; \
-		tar -czf "$${ARCHIVE_NAME}" -C $(BUILD_DIR) "$$(basename $${SOURCE_FILE})"; \
-	fi; \
-	\
-	ARCHIVE_SIZE=$$(du -h "$${ARCHIVE_NAME}" | cut -f1); \
-	BIN_SIZE=$$(du -h "$${SOURCE_FILE}" | cut -f1); \
-	echo "  ✓ 打包完成: $${ARCHIVE_NAME} [ 二进制: $${BIN_SIZE} -> 压缩包: $${ARCHIVE_SIZE} ]"
+	@if [ "$(ENABLE_ARCHIVE)" = "1" ]; then \
+		SOURCE_FILE=$(1); \
+		PLATFORM=$(2); \
+		ARCHIVE_NAME="$(BUILD_DIR)/$(BINARY_NAME)-$${PLATFORM}"; \
+		\
+		if echo "$${PLATFORM}" | grep -q "windows"; then \
+			if [ "$(ZIP)" ]; then \
+				ARCHIVE_NAME="$${ARCHIVE_NAME}.zip"; \
+				echo "  📦 正在打包 Windows 压缩包: $${ARCHIVE_NAME}..."; \
+				cd $(BUILD_DIR) && zip -q "$$(basename $${ARCHIVE_NAME})" "$$(basename $${SOURCE_FILE})"; \
+				cd ..; \
+				ARCHIVE_SIZE=$$(du -h "$${ARCHIVE_NAME}" | cut -f1); \
+				BIN_SIZE=$$(du -h "$${SOURCE_FILE}" | cut -f1); \
+				echo "  ✓ 打包完成: $${ARCHIVE_NAME} [ 二进制: $${BIN_SIZE} -> 压缩包: $${ARCHIVE_SIZE} ]"; \
+			else \
+				echo "  ⚠️  zip 未安装，无法打包 Windows 压缩包"; \
+			fi \
+		else \
+			if [ "$(TAR)" ]; then \
+				ARCHIVE_NAME="$${ARCHIVE_NAME}.tar.gz"; \
+				echo "  📦 正在打包 Unix 压缩包: $${ARCHIVE_NAME}..."; \
+				tar -czf "$${ARCHIVE_NAME}" -C $(BUILD_DIR) "$$(basename $${SOURCE_FILE})"; \
+				ARCHIVE_SIZE=$$(du -h "$${ARCHIVE_NAME}" | cut -f1); \
+				BIN_SIZE=$$(du -h "$${SOURCE_FILE}" | cut -f1); \
+				echo "  ✓ 打包完成: $${ARCHIVE_NAME} [ 二进制: $${BIN_SIZE} -> 压缩包: $${ARCHIVE_SIZE} ]"; \
+			else \
+				echo "  ⚠️  tar 未安装，无法打包 Unix 压缩包"; \
+			fi \
+		fi; \
+	elif [ "$(ENABLE_ARCHIVE)" = "0" ]; then \
+		echo "  ⏭️  压缩包已禁用"; \
+	fi
 endef
 
 # 版本信息（支持外部传入）
