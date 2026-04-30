@@ -382,7 +382,7 @@ clean:
 #####################
 
 # 构建所有平台
-.PHONY: build-all
+.PHONY: build-all build-linux-amd64 build-linux-arm64 build-linux-arm-v7 build-linux-mipsle build-linux-riscv64 build-linux-loong64 build-linux-386 build-linux-arm-v6 build-windows-amd64 build-windows-arm64 build-windows-386 build-darwin-amd64 build-darwin-arm64
 build-all: clean \
 	build-linux-amd64 \
 	build-linux-arm64 \
@@ -478,7 +478,7 @@ build-darwin-arm64:
 
 # 清理所有已压缩的二进制文件（上传前执行）
 .PHONY: clean-binaries
- clean-binaries:
+clean-binaries:
 	@echo "[清理] 删除已压缩的二进制文件..."
 	$(call clean_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-amd64,linux-amd64)
 	$(call clean_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-arm64,linux-arm64)
