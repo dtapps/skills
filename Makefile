@@ -310,6 +310,24 @@ define archive_binary
 	fi
 endef
 
+# 定义清理二进制文件逻辑：如果存在对应压缩包则删除二进制
+# 参数 $(1) 为二进制文件路径, $(2) 为目标平台 (如 linux-amd64)
+define clean_binary
+	@SOURCE_FILE=$(1); \
+	PLATFORM=$(2); \
+	if echo "$${PLATFORM}" | grep -q "windows"; then \
+		ARCHIVE_NAME="$(BUILD_DIR)/$(BINARY_NAME)-$${PLATFORM}.zip"; \
+	else \
+		ARCHIVE_NAME="$(BUILD_DIR)/$(BINARY_NAME)-$${PLATFORM}.tar.gz"; \
+	fi; \
+	if [ -f "$${ARCHIVE_NAME}" ] && [ -f "$${SOURCE_FILE}" ]; then \
+		rm -f "$${SOURCE_FILE}"; \
+		echo "  🗑️  已清理二进制: $${SOURCE_FILE} (存在 $${ARCHIVE_NAME})"; \
+	else \
+		echo "  ⏭️  未找到压缩包或二进制，跳过: $${SOURCE_FILE}"; \
+	fi
+endef
+
 # 版本信息（支持外部传入）
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
@@ -457,6 +475,25 @@ build-darwin-arm64:
 	GOOS=darwin GOARCH=arm64 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 .
 	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64)
 	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64,darwin-arm64)
+
+# 清理所有已压缩的二进制文件（上传前执行）
+.PHONY: clean-binaries
+ clean-binaries:
+	@echo "[清理] 删除已压缩的二进制文件..."
+	$(call clean_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-amd64,linux-amd64)
+	$(call clean_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-arm64,linux-arm64)
+	$(call clean_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-arm-v7,linux-arm-v7)
+	$(call clean_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-mipsle,linux-mipsle)
+	$(call clean_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-riscv64,linux-riscv64)
+	$(call clean_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-loong64,linux-loong64)
+	$(call clean_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-386,linux-386)
+	$(call clean_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-arm-v6,linux-arm-v6)
+	$(call clean_binary,./$(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe,windows-amd64)
+	$(call clean_binary,./$(BUILD_DIR)/$(BINARY_NAME)-windows-arm64.exe,windows-arm64)
+	$(call clean_binary,./$(BUILD_DIR)/$(BINARY_NAME)-windows-386.exe,windows-386)
+	$(call clean_binary,./$(BUILD_DIR)/$(BINARY_NAME)-darwin-amd64,darwin-amd64)
+	$(call clean_binary,./$(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64,darwin-arm64)
+	@echo "✓ 清理完成"
 
 #####################
 ## 打包 (Linux deb/rpm)
