@@ -20,6 +20,8 @@ const (
 	TencentNewsAPIKeyEnv = "TENCENT_NEWS_API_KEY"
 	// WeiboAPITokenEnv 微博API Token 环境变量
 	WeiboAPITokenEnv = "WEIBO_API_TOKEN"
+	// WeiboTokenDirEnv 微博 Token 目录环境变量
+	WeiboTokenDirEnv = "WEIBO_TOKEN_DIR"
 )
 
 // GetWorkDirEnv 获取工作目录环境变量名 (动态生成: {PROJECT_NAME}_WORK_DIR)
@@ -184,6 +186,20 @@ func getWeiboTokenManager() *APIKeyManager {
 	return weiboTokenManager
 }
 
+// weiboExternalTokenManager 微博外部 Token 管理器（通过目录加载）
+var weiboExternalTokenManager *TokenManager
+var weiboExternalTokenOnce sync.Once
+
+// getWeiboExternalTokenManager 获取微博外部 Token 管理器
+func getWeiboExternalTokenManager() *TokenManager {
+	weiboExternalTokenOnce.Do(func() {
+		weiboExternalTokenManager = NewTokenManager(WeiboTokenDirEnv)
+		// 尝试加载，如果失败则不标记为加载成功
+		_ = weiboExternalTokenManager.Load()
+	})
+	return weiboExternalTokenManager
+}
+
 // GetBaiduAPIKeyRandom 随机获取一个百度 API Key
 func GetBaiduAPIKeyRandom() string {
 	return getBaiduKeyManager().GetRandom()
@@ -215,7 +231,16 @@ func GetTencentNewsAPIKeys() []string {
 }
 
 // GetWeiboAPITokenRandom 随机获取一个微博 API Token
+// 优先级：1. WEIBO_TOKEN_DIR 目录下的 JSON 配置文件 2. 配置文件/环境变量
 func GetWeiboAPITokenRandom() string {
+	// 首先尝试从外部目录加载
+	tm := getWeiboExternalTokenManager()
+	if tm.IsLoaded() {
+		if token, err := tm.GetRandom(); err == nil && token != nil {
+			return token.Token
+		}
+	}
+	// 回退到从配置文件或环境变量获取
 	return getWeiboTokenManager().GetRandom()
 }
 
