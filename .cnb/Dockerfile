@@ -27,7 +27,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     xz-utils \
     ca-certificates \
     curl \
-    gnupg
+    gnupg \
+    zip \
+    unzip
 
 # 4. 安装 UPX 压缩工具
 RUN ARCH=$(uname -m) && \

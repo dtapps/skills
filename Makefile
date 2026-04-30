@@ -225,7 +225,6 @@ check:
 	GOOS=windows GOARCH=amd64 golangci-lint fmt
 	GOOS=windows GOARCH=amd64 golangci-lint run --build-tags $(LINT_TAGS)
 	GOOS=windows GOARCH=amd64 golangci-lint run --fix --build-tags $(LINT_TAGS)
-	
 
 #####################
 ## 构建相关
@@ -261,6 +260,29 @@ define compress_file
 			echo "  ⚠️  UPX 压缩跳过: $(1) ($$ERR_MSG)"; \
 		fi \
 	fi
+endef
+
+# 定义打包压缩逻辑：参数 $(1) 为源文件路径, $(2) 为目标平台 (如 linux-amd64)
+# Linux/macOS 使用 tar.gz, Windows 使用 zip
+define archive_binary
+	@SOURCE_FILE=$(1); \
+	PLATFORM=$(2); \
+	ARCHIVE_NAME="$(BUILD_DIR)/$(BINARY_NAME)-$${PLATFORM}"; \
+	\
+	if echo "$${PLATFORM}" | grep -q "windows"; then \
+		ARCHIVE_NAME="$${ARCHIVE_NAME}.zip"; \
+		echo "  📦 正在打包 Windows 压缩包: $${ARCHIVE_NAME}..."; \
+		cd $(BUILD_DIR) && zip -q "$$(basename $${ARCHIVE_NAME})" "$$(basename $${SOURCE_FILE})"; \
+		cd ..; \
+	else \
+		ARCHIVE_NAME="$${ARCHIVE_NAME}.tar.gz"; \
+		echo "  📦 正在打包 Unix 压缩包: $${ARCHIVE_NAME}..."; \
+		tar -czf "$${ARCHIVE_NAME}" -C $(BUILD_DIR) "$$(basename $${SOURCE_FILE})"; \
+	fi; \
+	\
+	ARCHIVE_SIZE=$$(du -h "$${ARCHIVE_NAME}" | cut -f1); \
+	BIN_SIZE=$$(du -h "$${SOURCE_FILE}" | cut -f1); \
+	echo "  ✓ 打包完成: $${ARCHIVE_NAME} [ 二进制: $${BIN_SIZE} -> 压缩包: $${ARCHIVE_SIZE} ]"
 endef
 
 # 版本信息（支持外部传入）
@@ -337,66 +359,79 @@ build-linux-amd64:
 	@echo "[构建] Linux AMD64 (通用服务器/PC x86_64)"
 	GOOS=linux GOARCH=amd64 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-linux-amd64 .
 	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-linux-amd64)
+	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-amd64,linux-amd64)
 
 build-linux-arm64:
 	@echo "[构建] Linux ARM64 (树莓派4/5, AWS Graviton, 苹果M系Linux虚拟机)"
 	GOOS=linux GOARCH=arm64 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 .
 	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-linux-arm64)
+	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-arm64,linux-arm64)
 
 build-linux-arm-v7:
 	@echo "[构建] Linux ARM v7 (32位, 旧款树莓派, 大部分NAS, 嵌入式盒子)"
 	GOOS=linux GOARCH=arm GOARM=7 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-linux-arm-v7 .
 	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-linux-arm-v7)
+	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-arm-v7,linux-arm-v7)
 
 build-linux-mipsle:
 	@echo "[构建] Linux MIPS LE (小端序, 常见于 OpenWrt 路由器/光猫)"
 	GOOS=linux GOARCH=mipsle GOMIPS=softfloat $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-linux-mipsle .
 	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-linux-mipsle)
+	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-mipsle,linux-mipsle)
 
 build-linux-riscv64:
 	@echo "[构建] Linux RISC-V 64位 (新兴开源指令集架构)"
 	GOOS=linux GOARCH=riscv64 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-linux-riscv64 .
 	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-linux-riscv64)
+	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-riscv64,linux-riscv64)
 
 build-linux-loong64:
 	@echo "[构建] Linux Loong64 (龙芯新版架构)"
 	GOOS=linux GOARCH=loong64 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-linux-loong64 .
 	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-linux-loong64)
+	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-loong64,linux-loong64)
 
 build-linux-386:
 	@echo "[构建] Linux 386 (32位 x86)"
 	GOOS=linux GOARCH=386 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-linux-386 .
 	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-linux-386)
+	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-386,linux-386)
 
 build-linux-arm-v6:
 	@echo "[构建] Linux ARM v6 (树莓派 Zero/1)"
 	GOOS=linux GOARCH=arm GOARM=6 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-linux-arm-v6 .
 	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-linux-arm-v6)
+	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-arm-v6,linux-arm-v6)
 
 build-windows-amd64:
 	@echo "[构建] Windows AMD64 (主流 Windows PC/服务器)"
 	GOOS=windows GOARCH=amd64 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe .
 	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe)
+	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe,windows-amd64)
 
 build-windows-arm64:
 	@echo "[构建] Windows ARM64 (Surface Pro X, 骁龙笔记本等)"
 	GOOS=windows GOARCH=arm64 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-windows-arm64.exe .
 	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-windows-arm64.exe)
+	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-windows-arm64.exe,windows-arm64)
 
 build-windows-386:
 	@echo "[构建] Windows 386 (32位 Windows PC)"
 	GOOS=windows GOARCH=386 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-windows-386.exe .
 	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-windows-386.exe)
+	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-windows-386.exe,windows-386)
 
 build-darwin-amd64:
 	@echo "[构建] macOS Intel (旧款 Macbook/iMac)"
 	GOOS=darwin GOARCH=amd64 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-darwin-amd64 .
 	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-darwin-amd64)
+	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-darwin-amd64,darwin-amd64)
 
 build-darwin-arm64:
 	@echo "[构建] macOS Apple Silicon (M1/M2/M3 芯片)"
 	GOOS=darwin GOARCH=arm64 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 .
 	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64)
+	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64,darwin-arm64)
 
 #####################
 ## 打包 (Linux deb/rpm)
