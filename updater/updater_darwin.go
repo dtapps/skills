@@ -16,6 +16,11 @@ func binaryExt() string {
 	return ""
 }
 
+// archiveExt 返回压缩包扩展名
+func archiveExt() string {
+	return ".tar.gz"
+}
+
 // updateWithPlatform macOS 平台特定的更新逻辑
 func (u *Updater) updateWithPlatform(binaryURL, targetPath string) error {
 	// macOS 使用标准二进制升级

@@ -29,6 +29,11 @@ func binaryExt() string {
 	return ""
 }
 
+// archiveExt 返回压缩包扩展名
+func archiveExt() string {
+	return ".tar.gz"
+}
+
 // updateWithPlatform Linux 平台特定的更新逻辑
 func (u *Updater) updateWithPlatform(binaryURL, targetPath string) error {
 	// 检测安装类型

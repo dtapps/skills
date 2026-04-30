@@ -1,13 +1,18 @@
 package updater
 
 import (
+	"archive/tar"
+	"archive/zip"
+	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/dtapp/skills/types"
@@ -133,9 +138,9 @@ func (u *Updater) getLatestVersionAndCommit() (string, string, error) {
 }
 
 // buildDownloadURL 构建下载 URL
-// 格式: https://cnb.cool/dtapp/skills/-/releases/download/{tag}/{binary-name}-{os}-{arch}
+// 格式: https://cnb.cool/dtapp/skills/-/releases/download/{tag}/{binary-name}-{os}-{arch}.{tar.gz|zip}
 func (u *Updater) buildDownloadURL(version string) string {
-	fileName := fmt.Sprintf("%s-%s-%s%s", types.ProjectName, runtime.GOOS, runtime.GOARCH, binaryExt())
+	fileName := fmt.Sprintf("%s-%s-%s%s", types.ProjectName, runtime.GOOS, runtime.GOARCH, archiveExt())
 	return fmt.Sprintf("%s/-/releases/download/%s/%s", u.repoURL, version, fileName)
 }
 
@@ -153,11 +158,11 @@ func (u *Updater) Update(binaryURL string) error {
 }
 
 // updateBinary 使用二进制方式升级
-func (u *Updater) updateBinary(binaryURL, targetPath string) error {
+func (u *Updater) updateBinary(archiveURL, targetPath string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, binaryURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, archiveURL, nil)
 	if err != nil {
 		return fmt.Errorf("创建下载请求失败: %w", err)
 	}
@@ -174,39 +179,49 @@ func (u *Updater) updateBinary(binaryURL, targetPath string) error {
 		return fmt.Errorf("下载失败，服务器返回: %d", resp.StatusCode)
 	}
 
-	// 创建临时文件存储下载内容
-	tmpFile, err := os.CreateTemp("", "dtskills-download-*")
+	// 创建临时目录存储下载的压缩包和解压后的文件
+	tmpDir, err := os.MkdirTemp("", "dtskills-update-*")
 	if err != nil {
-		return fmt.Errorf("创建临时文件失败: %w", err)
+		return fmt.Errorf("创建临时目录失败: %w", err)
 	}
-	tmpPath := tmpFile.Name()
 	defer func() {
-		_ = tmpFile.Close()
-		_ = os.Remove(tmpPath)
+		_ = os.RemoveAll(tmpDir)
 	}()
+
+	// 下载压缩包
+	archivePath := filepath.Join(tmpDir, "update"+archiveExt())
+	archiveFile, err := os.Create(archivePath)
+	if err != nil {
+		return fmt.Errorf("创建压缩包文件失败: %w", err)
+	}
 
 	// 使用进度条下载
 	if resp.ContentLength > 0 {
-		if err := downloadWithProgressBar(resp.Body, tmpFile, resp.ContentLength, "下载更新"); err != nil {
+		if err := downloadWithProgressBar(resp.Body, archiveFile, resp.ContentLength, "下载更新"); err != nil {
+			_ = archiveFile.Close()
 			return fmt.Errorf("下载失败: %w", err)
 		}
 	} else {
 		// 未知大小，直接下载
-		if _, err := io.Copy(tmpFile, resp.Body); err != nil {
+		if _, err := io.Copy(archiveFile, resp.Body); err != nil {
+			_ = archiveFile.Close()
 			return fmt.Errorf("下载失败: %w", err)
 		}
 	}
+	_ = archiveFile.Close()
 
-	// 关闭临时文件以便读取
-	if err := tmpFile.Close(); err != nil {
-		return fmt.Errorf("关闭临时文件失败: %w", err)
+	// 解压压缩包
+	binaryName := filepath.Base(targetPath)
+	extractedPath, err := extractArchive(archivePath, tmpDir, binaryName)
+	if err != nil {
+		return fmt.Errorf("解压失败: %w", err)
 	}
 
-	// 重新打开临时文件用于更新
-	// #nosec G304 - tmpPath 是程序内部生成的临时文件路径，非用户输入
-	updateFile, err := os.Open(tmpPath)
+	// 打开解压后的二进制文件
+	// #nosec G304 - extractedPath 是程序内部生成的临时文件路径，非用户输入
+	updateFile, err := os.Open(extractedPath)
 	if err != nil {
-		return fmt.Errorf("打开临时文件失败: %w", err)
+		return fmt.Errorf("打开解压后的文件失败: %w", err)
 	}
 	defer func() {
 		_ = updateFile.Close()
@@ -227,6 +242,104 @@ func (u *Updater) updateBinary(binaryURL, targetPath string) error {
 	}
 
 	return nil
+}
+
+// extractArchive 解压压缩包
+func extractArchive(archivePath, destDir, expectedBinary string) (string, error) {
+	if strings.HasSuffix(archivePath, ".zip") {
+		return extractZip(archivePath, destDir, expectedBinary)
+	}
+	return extractTarGz(archivePath, destDir, expectedBinary)
+}
+
+// extractTarGz 解压 tar.gz 文件
+func extractTarGz(archivePath, destDir, expectedBinary string) (string, error) {
+	file, err := os.Open(archivePath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	gzReader, err := gzip.NewReader(file)
+	if err != nil {
+		return "", err
+	}
+	defer gzReader.Close()
+
+	tarReader := tar.NewReader(gzReader)
+
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return "", err
+		}
+
+		// 跳过目录和非目标文件
+		if header.Typeflag != tar.TypeReg {
+			continue
+		}
+
+		// 检查是否为目标二进制文件
+		if header.Name == expectedBinary || filepath.Base(header.Name) == expectedBinary {
+			destPath := filepath.Join(destDir, expectedBinary)
+			destFile, err := os.OpenFile(destPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(header.Mode))
+			if err != nil {
+				return "", err
+			}
+			_, err = io.Copy(destFile, tarReader)
+			_ = destFile.Close()
+			if err != nil {
+				return "", err
+			}
+			return destPath, nil
+		}
+	}
+
+	return "", fmt.Errorf("在压缩包中未找到二进制文件: %s", expectedBinary)
+}
+
+// extractZip 解压 zip 文件
+func extractZip(archivePath, destDir, expectedBinary string) (string, error) {
+	reader, err := zip.OpenReader(archivePath)
+	if err != nil {
+		return "", err
+	}
+	defer reader.Close()
+
+	for _, file := range reader.File {
+		// 跳过目录
+		if file.FileInfo().IsDir() {
+			continue
+		}
+
+		// 检查是否为目标二进制文件
+		if file.Name == expectedBinary || filepath.Base(file.Name) == expectedBinary {
+			destPath := filepath.Join(destDir, expectedBinary)
+			destFile, err := os.OpenFile(destPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, file.Mode())
+			if err != nil {
+				return "", err
+			}
+
+			srcFile, err := file.Open()
+			if err != nil {
+				_ = destFile.Close()
+				return "", err
+			}
+
+			_, err = io.Copy(destFile, srcFile)
+			_ = srcFile.Close()
+			_ = destFile.Close()
+			if err != nil {
+				return "", err
+			}
+			return destPath, nil
+		}
+	}
+
+	return "", fmt.Errorf("在压缩包中未找到二进制文件: %s", expectedBinary)
 }
 
 // GetCurrentVersion 获取当前版本
