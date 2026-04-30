@@ -401,79 +401,66 @@ build-all: clean \
 build-linux-amd64:
 	@echo "[构建] Linux AMD64 (通用服务器/PC x86_64)"
 	GOOS=linux GOARCH=amd64 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-linux-amd64 .
-	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-linux-amd64)
 	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-amd64,linux-amd64)
 
 build-linux-arm64:
 	@echo "[构建] Linux ARM64 (树莓派4/5, AWS Graviton, 苹果M系Linux虚拟机)"
 	GOOS=linux GOARCH=arm64 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 .
-	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-linux-arm64)
 	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-arm64,linux-arm64)
 
 build-linux-arm-v7:
 	@echo "[构建] Linux ARM v7 (32位, 旧款树莓派, 大部分NAS, 嵌入式盒子)"
 	GOOS=linux GOARCH=arm GOARM=7 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-linux-arm-v7 .
-	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-linux-arm-v7)
 	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-arm-v7,linux-arm-v7)
 
 build-linux-mipsle:
 	@echo "[构建] Linux MIPS LE (小端序, 常见于 OpenWrt 路由器/光猫)"
 	GOOS=linux GOARCH=mipsle GOMIPS=softfloat $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-linux-mipsle .
-	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-linux-mipsle)
 	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-mipsle,linux-mipsle)
 
 build-linux-riscv64:
 	@echo "[构建] Linux RISC-V 64位 (新兴开源指令集架构)"
 	GOOS=linux GOARCH=riscv64 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-linux-riscv64 .
-	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-linux-riscv64)
 	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-riscv64,linux-riscv64)
 
 build-linux-loong64:
 	@echo "[构建] Linux Loong64 (龙芯新版架构)"
 	GOOS=linux GOARCH=loong64 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-linux-loong64 .
-	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-linux-loong64)
 	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-loong64,linux-loong64)
 
 build-linux-386:
 	@echo "[构建] Linux 386 (32位 x86)"
 	GOOS=linux GOARCH=386 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-linux-386 .
-	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-linux-386)
 	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-386,linux-386)
 
 build-linux-arm-v6:
 	@echo "[构建] Linux ARM v6 (树莓派 Zero/1)"
 	GOOS=linux GOARCH=arm GOARM=6 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-linux-arm-v6 .
-	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-linux-arm-v6)
 	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-arm-v6,linux-arm-v6)
 
 build-windows-amd64:
 	@echo "[构建] Windows AMD64 (主流 Windows PC/服务器)"
 	GOOS=windows GOARCH=amd64 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe .
-	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe)
 	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe,windows-amd64)
 
 build-windows-arm64:
 	@echo "[构建] Windows ARM64 (Surface Pro X, 骁龙笔记本等)"
 	GOOS=windows GOARCH=arm64 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-windows-arm64.exe .
-	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-windows-arm64.exe)
 	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-windows-arm64.exe,windows-arm64)
 
 build-windows-386:
 	@echo "[构建] Windows 386 (32位 Windows PC)"
 	GOOS=windows GOARCH=386 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-windows-386.exe .
-	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-windows-386.exe)
 	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-windows-386.exe,windows-386)
 
 build-darwin-amd64:
 	@echo "[构建] macOS Intel (旧款 Macbook/iMac)"
 	GOOS=darwin GOARCH=amd64 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-darwin-amd64 .
-	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-darwin-amd64)
 	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-darwin-amd64,darwin-amd64)
 
 build-darwin-arm64:
 	@echo "[构建] macOS Apple Silicon (M1/M2/M3 芯片)"
 	GOOS=darwin GOARCH=arm64 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 .
-	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64)
 	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64,darwin-arm64)
 
 # 清理所有已压缩的二进制文件（上传前执行）
@@ -508,22 +495,22 @@ endef
 .PHONY: package-deb
 package-deb: build-linux-amd64
 	@echo "[打包] 创建 Linux deb 包..."
-	@mkdir -p dist
+	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-linux-amd64)
 	$(call generate_nfpm_config,amd64)
-	nfpm package -p deb -f .nfpm-amd64.yaml -t dist/dtskills_amd64.deb
+	nfpm package -p deb -f .nfpm-amd64.yaml -t $(BUILD_DIR)/dtskills_amd64.deb
 	@rm -f .nfpm-amd64.yaml
-	@echo "✓ deb 包已创建: dist/dtskills_amd64.deb"
+	@echo "✓ deb 包已创建: $(BUILD_DIR)/dtskills_amd64.deb"
 
 # 打包 Linux rpm
 .PHONY: package-rpm
 package-rpm: build-linux-amd64
 	@echo "[打包] 创建 Linux rpm 包..."
-	@mkdir -p dist
-	@cp dist/dtskills-linux-amd64 dist/dtskills-linux-x86_64 2>/dev/null || true
+	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-linux-amd64)
+	@cp $(BUILD_DIR)/dtskills-linux-amd64 $(BUILD_DIR)/dtskills-linux-x86_64 2>/dev/null || true
 	$(call generate_nfpm_config,x86_64)
-	nfpm package -p rpm -f .nfpm-x86_64.yaml -t dist/dtskills.x86_64.rpm
-	@rm -f .nfpm-x86_64.yaml dist/dtskills-linux-x86_64
-	@echo "✓ rpm 包已创建: dist/dtskills.x86_64.rpm"
+	nfpm package -p rpm -f .nfpm-x86_64.yaml -t $(BUILD_DIR)/dtskills.x86_64.rpm
+	@rm -f .nfpm-x86_64.yaml $(BUILD_DIR)/dtskills-linux-x86_64
+	@echo "✓ rpm 包已创建: $(BUILD_DIR)/dtskills.x86_64.rpm"
 
 # 打包所有 Linu deb/rpm 包
 .PHONY: package-linux-all
@@ -541,37 +528,37 @@ MSI_VERSION=$(shell echo $(VERSION) | sed 's/v//')
 .PHONY: package-win-amd64
 package-win-amd64: build-windows-amd64
 	@echo "[打包] 创建 Windows MSI 包 (AMD64)..."
-	@mkdir -p dist
+	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe)
 	@sed -e 's|$${VERSION}|$(MSI_VERSION)|g' \
-	     -e 's|Source="dtskills.exe"|Source="dist/dtskills-windows-amd64.exe"|g' \
-	     installer.wxs > dist/installer-amd64.wxs
-	wixl -v -a x64 dist/installer-amd64.wxs -o dist/dtskills_amd64.msi
-	@rm -f dist/installer-amd64.wxs
-	@echo "✓ MSI 包已创建: dist/dtskills_amd64.msi"
+	     -e 's|Source="dtskills.exe"|Source="$(BUILD_DIR)/dtskills-windows-amd64.exe"|g' \
+	     installer.wxs > $(BUILD_DIR)/installer-amd64.wxs
+	wixl -v -a x64 $(BUILD_DIR)/installer-amd64.wxs -o $(BUILD_DIR)/dtskills_amd64.msi
+	@rm -f $(BUILD_DIR)/installer-amd64.wxs
+	@echo "✓ MSI 包已创建: $(BUILD_DIR)/dtskills_amd64.msi"
 
 # 打包 Windows MSI (ARM64)
 .PHONY: package-win-arm64
 package-win-arm64: build-windows-arm64
 	@echo "[打包] 创建 Windows MSI 包 (ARM64)..."
-	@mkdir -p dist
+	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-windows-arm64.exe)
 	@sed -e 's|$${VERSION}|$(MSI_VERSION)|g' \
-	     -e 's|Source="dtskills.exe"|Source="dist/dtskills-windows-arm64.exe"|g' \
-	     installer.wxs > dist/installer-arm64.wxs
-	wixl -v -a arm64 dist/installer-arm64.wxs -o dist/dtskills_arm64.msi
-	@rm -f dist/installer-arm64.wxs
-	@echo "✓ MSI 包已创建: dist/dtskills_arm64.msi"
+	     -e 's|Source="dtskills.exe"|Source="$(BUILD_DIR)/dtskills-windows-arm64.exe"|g' \
+	     installer.wxs > $(BUILD_DIR)/installer-arm64.wxs
+	wixl -v -a arm64 $(BUILD_DIR)/installer-arm64.wxs -o $(BUILD_DIR)/dtskills_arm64.msi
+	@rm -f $(BUILD_DIR)/installer-arm64.wxs
+	@echo "✓ MSI 包已创建: $(BUILD_DIR)/dtskills_arm64.msi"
 
 # 打包 Windows MSI (386)
 .PHONY: package-win-386
 package-win-386: build-windows-386
 	@echo "[打包] 创建 Windows MSI 包 (386)..."
-	@mkdir -p dist
+	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-windows-386.exe)
 	@sed -e 's|$${VERSION}|$(MSI_VERSION)|g' \
-	     -e 's|Source="dtskills.exe"|Source="dist/dtskills-windows-386.exe"|g' \
-	     installer.wxs > dist/installer-386.wxs
-	wixl -v -a x86 dist/installer-386.wxs -o dist/dtskills_386.msi
-	@rm -f dist/installer-386.wxs
-	@echo "✓ MSI 包已创建: dist/dtskills_386.msi"
+	     -e 's|Source="dtskills.exe"|Source="$(BUILD_DIR)/dtskills-windows-386.exe"|g' \
+	     installer.wxs > $(BUILD_DIR)/installer-386.wxs
+	wixl -v -a x86 $(BUILD_DIR)/installer-386.wxs -o $(BUILD_DIR)/dtskills_386.msi
+	@rm -f $(BUILD_DIR)/installer-386.wxs
+	@echo "✓ MSI 包已创建: $(BUILD_DIR)/dtskills_386.msi"
 
 # 打包所有 Windows MSI 包
 .PHONY: package-win-all
