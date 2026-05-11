@@ -14,7 +14,7 @@ import (
 
 const (
 	statsFileName  = "stats.json"
-	maxRecentUsage = 100 // 最多保留100条最近使用记录
+	maxRecentUsage = 500 // 最多保留500条最近使用记录
 )
 
 // StatsData 统计数据根结构
