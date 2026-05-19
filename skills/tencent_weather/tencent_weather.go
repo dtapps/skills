@@ -115,11 +115,11 @@ func (s *TencentWeatherSkill) createCurrentCmd() *cobra.Command {
 				return
 			}
 
-			if adcode == "" {
-				cmd.Println("正在获取当前地区天气...")
-			} else {
-				cmd.Printf("正在获取地区 %s 的天气...\n", adcode)
-			}
+			// if adcode == "" {
+			// 	cmd.Println("正在获取当前地区天气...")
+			// } else {
+			// 	cmd.Printf("正在获取地区 %s 的天气...\n", adcode)
+			// }
 
 			resp, err := GetCurrentWeather(adcode, s.GetInfo().Name)
 			if err != nil {
@@ -182,11 +182,11 @@ func (s *TencentWeatherSkill) createForecastCmd() *cobra.Command {
 				return
 			}
 
-			if adcode == "" {
-				cmd.Println("正在获取当前地区天气预报...")
-			} else {
-				cmd.Printf("正在获取地区 %s 的 %s 预报...\n", adcode, weatherType)
-			}
+			// if adcode == "" {
+			// 	cmd.Println("正在获取当前地区天气预报...")
+			// } else {
+			// 	cmd.Printf("正在获取地区 %s 的 %s 预报...\n", adcode, weatherType)
+			// }
 
 			resp, err := GetForecastWeather(adcode, weatherType, s.GetInfo().Name)
 			if err != nil {
@@ -257,11 +257,11 @@ func (s *TencentWeatherSkill) createAirQualityCmd() *cobra.Command {
 				return
 			}
 
-			if adcode == "" {
-				cmd.Println("正在获取当前地区天气空气质量...")
-			} else {
-				cmd.Printf("正在获取地区 %s 的天气空气质量...\n", adcode)
-			}
+			// if adcode == "" {
+			// 	cmd.Println("正在获取当前地区天气空气质量...")
+			// } else {
+			// 	cmd.Printf("正在获取地区 %s 的天气空气质量...\n", adcode)
+			// }
 
 			resp, err := GetAirQuality(adcode, s.GetInfo().Name)
 			if err != nil {
@@ -317,7 +317,7 @@ func (s *TencentWeatherSkill) createIP2CityCmd() *cobra.Command {
 				return
 			}
 
-			cmd.Println("正在获取IP定位信息...")
+			// cmd.Println("正在获取IP定位信息...")
 
 			resp, err := GetIP2City(s.GetInfo().Name)
 			if err != nil {

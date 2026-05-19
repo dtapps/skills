@@ -86,7 +86,7 @@ func (s *JiaozhenFactCheckSkill) createCheckCmd() *cobra.Command {
 				return
 			}
 
-			cmd.Printf("正在查证: %s\n", query)
+			// cmd.Printf("正在查证: %s\n", query)
 
 			resp, err := FactCheck(query, s.GetInfo().Name)
 			if err != nil {

@@ -112,7 +112,7 @@ func (s *TencentNewsSkill) createSearchCmd() *cobra.Command {
 		Use:   CmdSearch,
 		Short: "搜索新闻",
 		Run: func(cmd *cobra.Command, args []string) {
-			cmd.Printf("正在搜索新闻: %s\n", query)
+			// cmd.Printf("正在搜索新闻: %s\n", query)
 
 			// 检查并获取 API Key
 			if _, ok := s.requireAPIKey(cmd); !ok {
@@ -174,7 +174,7 @@ func (s *TencentNewsSkill) createHotCmd() *cobra.Command {
 		Use:   CmdHot,
 		Short: "获取热点新闻",
 		Run: func(cmd *cobra.Command, args []string) {
-			cmd.Println("正在获取热点新闻...")
+			// cmd.Println("正在获取热点新闻...")
 
 			// 检查并获取 API Key
 			if _, ok := s.requireAPIKey(cmd); !ok {
@@ -228,7 +228,7 @@ func (s *TencentNewsSkill) createMorningCmd() *cobra.Command {
 		Use:   CmdMorning,
 		Short: "获取新闻早报",
 		Run: func(cmd *cobra.Command, args []string) {
-			cmd.Println("正在获取新闻早报...")
+			// cmd.Println("正在获取新闻早报...")
 
 			// 检查并获取 API Key
 			if _, ok := s.requireAPIKey(cmd); !ok {
@@ -282,7 +282,7 @@ func (s *TencentNewsSkill) createEveningCmd() *cobra.Command {
 		Use:   CmdEvening,
 		Short: "获取新闻晚报",
 		Run: func(cmd *cobra.Command, args []string) {
-			cmd.Println("正在获取新闻晚报...")
+			// cmd.Println("正在获取新闻晚报...")
 
 			// 检查并获取 API Key
 			if _, ok := s.requireAPIKey(cmd); !ok {

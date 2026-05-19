@@ -101,7 +101,7 @@ func (s *BaiduBaikeSkill) createSearchCmd() *cobra.Command {
 		Use:   CmdSearch,
 		Short: "查询百度百科词条",
 		Run: func(cmd *cobra.Command, args []string) {
-			cmd.Printf("正在查询百度百科：%s\n", searchKey)
+			// cmd.Printf("正在查询百度百科：%s\n", searchKey)
 
 			// 检查并获取 API Key
 			if _, ok := s.requireAPIKey(cmd); !ok {

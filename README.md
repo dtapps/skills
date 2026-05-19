@@ -47,7 +47,7 @@ sudo apt-get install -f
 安装后可直接使用 `dtskills` 命令：
 
 ```bash
-dtskills --version
+dtskills version
 dtskills generate
 ```
 

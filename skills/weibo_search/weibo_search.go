@@ -105,7 +105,7 @@ func (s *WeiboSearchSkill) createHotSearchCmd() *cobra.Command {
 		Short: "获取微博热搜榜",
 		Long:  "微博热搜榜工具。当用户需要查看微博热搜、获取热门话题、了解当前热点新闻时激活。",
 		Run: func(cmd *cobra.Command, args []string) {
-			cmd.Println("正在获取微博热搜榜...")
+			// cmd.Println("正在获取微博热搜榜...")
 
 			// 检查并获取 API Token
 			if _, ok := s.requireAPIToken(cmd); !ok {
@@ -171,7 +171,7 @@ func (s *WeiboSearchSkill) createSmartSearchCmd() *cobra.Command {
 		Short: "执行微博智搜",
 		Long:  "微博智搜工具，通过关键词获取微博智搜内容。当用户需要搜索微博内容、查找微博话题、搜索微博用户发布的内容时激活。",
 		Run: func(cmd *cobra.Command, args []string) {
-			cmd.Printf("正在搜索微博: %s\n", query)
+			// cmd.Printf("正在搜索微博: %s\n", query)
 
 			// 检查并获取 API Token
 			if _, ok := s.requireAPIToken(cmd); !ok {

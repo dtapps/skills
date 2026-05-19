@@ -103,7 +103,7 @@ func (s *WeiboUserSkill) createMyPostsCmd() *cobra.Command {
 		Use:   CmdMyPosts,
 		Short: "获取当前用户发布的微博列表",
 		Run: func(cmd *cobra.Command, args []string) {
-			cmd.Println("正在获取我的微博列表...")
+			// cmd.Println("正在获取我的微博列表...")
 
 			// 检查并获取 API Token
 			if _, ok := s.requireAPIToken(cmd); !ok {
@@ -163,7 +163,7 @@ func (s *WeiboUserSkill) createMyInfoCmd() *cobra.Command {
 		Use:   CmdMyInfo,
 		Short: "获取当前授权用户信息",
 		Run: func(cmd *cobra.Command, args []string) {
-			cmd.Println("正在获取用户信息...")
+			// cmd.Println("正在获取用户信息...")
 
 			// 检查并获取 API Token
 			if _, ok := s.requireAPIToken(cmd); !ok {
