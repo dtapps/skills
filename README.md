@@ -67,8 +67,10 @@ sudo dnf install dtskills.x86_64.rpm
 安装后可直接使用 `dtskills` 命令：
 
 ```bash
-dtskills --version
+dtskills version
 dtskills generate
+dtskills upgrade
+dtskills help
 ```
 
 **注意**：通过 deb/rpm 安装后，二进制文件位于 `/usr/bin/dtskills`，配置文件位于 `/etc/dtskills/config.yaml`。
