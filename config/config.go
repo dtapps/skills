@@ -18,6 +18,8 @@ const (
 	BaiduAPIKeyEnv = "BAIDU_API_KEY"
 	// TencentNewsAPIKeyEnv 腾讯新闻 API Key 环境变量
 	TencentNewsAPIKeyEnv = "TENCENT_NEWS_API_KEY"
+	// HefengAPIKeyEnv 和风天气 API Key 环境变量
+	HefengAPIKeyEnv = "HEFENG_API_KEY"
 	// WeiboAPITokenEnv 微博API Token 环境变量
 	WeiboAPITokenEnv = "WEIBO_API_TOKEN"
 	// WeiboTokenDirEnv 微博 Token 目录环境变量
@@ -35,6 +37,8 @@ const (
 	KeyBaiduAPIKey = "api_keys.baidu"
 	// KeyTencentNewsAPIKey 腾讯新闻 API Key 配置键
 	KeyTencentNewsAPIKey = "api_keys.tencent_news"
+	// KeyHefengAPIKey 和风天气 API Key 配置键
+	KeyHefengAPIKey = "api_keys.hefeng"
 	// KeyWeiboAPIToken 微博 API Token 配置键
 	KeyWeiboAPIToken = "api_tokens.weibo"
 	// KeyWeiboTokenDir 微博 Token 目录配置键
@@ -86,6 +90,7 @@ func LoadConfig() error {
 	// 绑定环境变量
 	_ = viper.BindEnv(KeyBaiduAPIKey, BaiduAPIKeyEnv)
 	_ = viper.BindEnv(KeyTencentNewsAPIKey, TencentNewsAPIKeyEnv)
+	_ = viper.BindEnv(KeyHefengAPIKey, HefengAPIKeyEnv)
 	_ = viper.BindEnv(KeyWeiboAPIToken, WeiboAPITokenEnv)
 	_ = viper.BindEnv(KeyWeiboTokenDir, WeiboTokenDirEnv)
 
@@ -117,6 +122,11 @@ func GetTencentNewsAPIKey() string {
 	return viper.GetString(KeyTencentNewsAPIKey)
 }
 
+// GetHefengAPIKey 获取和风天气 API Key
+func GetHefengAPIKey() string {
+	return viper.GetString(KeyHefengAPIKey)
+}
+
 // GetWeiboAPIToken 获取微博 API Token
 func GetWeiboAPIToken() string {
 	return viper.GetString(KeyWeiboAPIToken)
@@ -146,6 +156,11 @@ func SetBaiduAPIKey(apiKey string) {
 // SetTencentNewsAPIKey 设置腾讯新闻 API Key
 func SetTencentNewsAPIKey(apiKey string) {
 	viper.Set(KeyTencentNewsAPIKey, apiKey)
+}
+
+// SetHefengAPIKey 设置和风天气 API Key
+func SetHefengAPIKey(apiKey string) {
+	viper.Set(KeyHefengAPIKey, apiKey)
 }
 
 // SetWeiboAPIToken 设置微博 API Token
@@ -180,6 +195,18 @@ func getTencentNewsKeyManager() *APIKeyManager {
 		tencentNewsKeyManager = NewAPIKeyManager(KeyTencentNewsAPIKey, TencentNewsAPIKeyEnv)
 	})
 	return tencentNewsKeyManager
+}
+
+// hefengKeyManager 和风天气 API Key 管理器（懒加载）
+var hefengKeyManager *APIKeyManager
+var hefengKeyOnce sync.Once
+
+// getHefengKeyManager 获取和风天气 Key 管理器
+func getHefengKeyManager() *APIKeyManager {
+	hefengKeyOnce.Do(func() {
+		hefengKeyManager = NewAPIKeyManager(KeyHefengAPIKey, HefengAPIKeyEnv)
+	})
+	return hefengKeyManager
 }
 
 // weiboTokenManager 微博 API Token 管理器（懒加载）
@@ -244,6 +271,21 @@ func GetTencentNewsAPIKeyNext() string {
 // GetTencentNewsAPIKeys 获取所有腾讯新闻 API Key
 func GetTencentNewsAPIKeys() []string {
 	return getTencentNewsKeyManager().GetAll()
+}
+
+// GetHefengAPIKeyRandom 随机获取一个和风天气 API Key
+func GetHefengAPIKeyRandom() string {
+	return getHefengKeyManager().GetRandom()
+}
+
+// GetHefengAPIKeyNext 轮询获取下一个和风天气 API Key
+func GetHefengAPIKeyNext() string {
+	return getHefengKeyManager().GetNext()
+}
+
+// GetHefengAPIKeys 获取所有和风天气 API Key
+func GetHefengAPIKeys() []string {
+	return getHefengKeyManager().GetAll()
 }
 
 // GetWeiboAPITokenRandom 随机获取一个微博 API Token

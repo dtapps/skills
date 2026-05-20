@@ -32,7 +32,7 @@ generate:
 # make config-list
 .PHONY: config-list
 config-list:
-	@echo "[配置] 获取配置文件路径..."
+	@echo "[配置] 获取配置文件列表..."
 	@mkdir -p $(DTSKILLS_WORK_DIR)
 	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . config list
 
@@ -191,6 +191,35 @@ weibo-search-smart-search:
 	@echo "[微博搜索] 执行微博智搜..."
 	@mkdir -p $(DTSKILLS_WORK_DIR)
 	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . weibo-search smart-search --query "$(QUERY)" $(VERBOSE)
+
+#####################
+
+# 和风天气 获取当前天气
+# make hefeng-weather-current LOCATION=101280601
+# make hefeng-weather-current LOCATION=101280601 VERBOSE="-v"
+.PHONY: hefeng-weather-current
+hefeng-weather-current:
+	@echo "[和风天气] 获取当前天气..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . hefeng-weather current --location "$(LOCATION)" $(VERBOSE)
+
+# 和风天气 获取每日天气预报
+# make hefeng-weather-forecast LOCATION=101280601
+# make hefeng-weather-forecast LOCATION=101280601 VERBOSE="-v"
+.PHONY: hefeng-weather-forecast
+hefeng-weather-forecast:
+	@echo "[和风天气] 获取每日天气预报..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . hefeng-weather forecast --location "$(LOCATION)" $(VERBOSE)
+
+# 和风天气 获取天气空气质量
+# make hefeng-weather-air-quality LOCATION=101280601
+# make hefeng-weather-air-quality LOCATION=101280601 VERBOSE="-v"
+.PHONY: hefeng-weather-air-quality
+hefeng-weather-air-quality:
+	@echo "[和风天气] 获取天气空气质量..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . hefeng-weather air-quality --location "$(LOCATION)" $(VERBOSE)
 
 #####################
 ## 检查相关

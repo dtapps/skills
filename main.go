@@ -11,6 +11,7 @@ import (
 	"github.com/dtapp/skills/generator"
 	"github.com/dtapp/skills/skills/baidu_baike"
 	"github.com/dtapp/skills/skills/baidu_search"
+	"github.com/dtapp/skills/skills/hefeng_weather"
 	"github.com/dtapp/skills/skills/tencent_news"
 	"github.com/dtapp/skills/skills/tencent_weather"
 	"github.com/dtapp/skills/skills/weibo_search"
@@ -46,6 +47,7 @@ func runGenerate(cmd *cobra.Command, args []string) {
 		// jiaozhen_factcheck.GetSkillInfo(),
 		weibo_search.GetSkillInfo(),
 		// weibo_user.GetSkillInfo(),
+		hefeng_weather.GetSkillInfo(),
 	}
 
 	// 构建选项列表（显示中文名称、原名字和版本号）
@@ -529,6 +531,7 @@ func main() {
 	// rootCmd.AddCommand(stats.WrapSkillCommands(jiaozhen_factcheck.NewJiaozhenFactCheckCmd()))
 	rootCmd.AddCommand(stats.WrapSkillCommands(weibo_search.NewWeiboSearchCmd()))
 	// rootCmd.AddCommand(stats.WrapSkillCommands(weibo_user.NewWeiboUserCmd()))
+	rootCmd.AddCommand(stats.WrapSkillCommands(hefeng_weather.NewHefengWeatherCmd()))
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
