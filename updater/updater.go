@@ -78,10 +78,7 @@ func (u *Updater) Check(force bool) (bool, string, string, string, error) {
 	// 版本号相同，比较 Commit ID（如果都有的话）
 	if u.currentCommit != "" && u.currentCommit != "unknown" && latestCommit != "" {
 		// 统一比较长度：使用较短的长度进行比较
-		minLen := len(u.currentCommit)
-		if len(latestCommit) < minLen {
-			minLen = len(latestCommit)
-		}
+		minLen := min(len(latestCommit), len(u.currentCommit))
 		if latestCommit[:minLen] != u.currentCommit[:minLen] {
 			// Commit 不同，说明是同一版本的不同构建
 			return true, latestVersion, latestCommit, downloadURL, nil

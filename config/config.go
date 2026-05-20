@@ -37,6 +37,8 @@ const (
 	KeyTencentNewsAPIKey = "api_keys.tencent_news"
 	// KeyWeiboAPIToken 微博 API Token 配置键
 	KeyWeiboAPIToken = "api_tokens.weibo"
+	// KeyWeiboTokenDir 微博 Token 目录配置键
+	KeyWeiboTokenDir = "api_tokens.weibo.token_dir"
 	// KeyRestyDebug Resty Debug 配置键
 	KeyRestyDebug = "debug.resty"
 	// KeySkillsPath 技能包路径配置键
@@ -85,6 +87,7 @@ func LoadConfig() error {
 	_ = viper.BindEnv(KeyBaiduAPIKey, BaiduAPIKeyEnv)
 	_ = viper.BindEnv(KeyTencentNewsAPIKey, TencentNewsAPIKeyEnv)
 	_ = viper.BindEnv(KeyWeiboAPIToken, WeiboAPITokenEnv)
+	_ = viper.BindEnv(KeyWeiboTokenDir, WeiboTokenDirEnv)
 
 	// 读取配置文件
 	err := viper.ReadInConfig()

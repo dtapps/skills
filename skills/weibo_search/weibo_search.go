@@ -86,7 +86,7 @@ func (s *WeiboSearchSkill) requireAPIToken(cmd *cobra.Command) (string, bool) {
 	apiToken := config.GetWeiboAPITokenRandom()
 	if apiToken == "" {
 		cmd.Println("错误：未设置微博 API Key，请在配置文件或环境变量中设置")
-		cmd.Printf("提示：使用 '%s config set api_tokens.weibo <your-api-token>' 设置，或使用 '%s config add api_tokens.weibo <your-api-token>' 添加多个 Token\n", types.ProjectName, types.ProjectName)
+		cmd.Printf("提示：使用 '%s config set api_tokens.weibo <your-api-token>' 设置，也可以使用 '%s config set api_tokens.weibo.token_dir <your-token-dir-path>' 设置 Token 目录，或使用 '%s config add api_tokens.weibo <your-api-token>' 添加多个 Token\n", types.ProjectName, types.ProjectName, types.ProjectName)
 		return "", false
 	}
 	return apiToken, true

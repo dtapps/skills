@@ -8,7 +8,7 @@ FROM golang:1.26.3-trixie
 # https://github.com/goreleaser/nfpm/releases
 # ==========================================
 ARG UPX_VERSION=5.1.1
-ARG GOLANGCI_LINT_VERSION=2.11.4
+ARG GOLANGCI_LINT_VERSION=2.12.2
 ARG NFPM_VERSION=2.46.3
 
 # 1. 设置 Go 环境变量
