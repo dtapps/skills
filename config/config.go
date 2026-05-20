@@ -122,6 +122,11 @@ func GetWeiboAPIToken() string {
 	return viper.GetString(KeyWeiboAPIToken)
 }
 
+// GetWeiboTokenDir 获取微博 Token 目录
+func GetWeiboTokenDir() string {
+	return viper.GetString(KeyWeiboTokenDir)
+}
+
 // IsRestyDebugEnabled 是否开启 Resty Debug 模式
 // 注意：此参数只能从配置文件读取，不能通过环境变量设置
 func IsRestyDebugEnabled() bool {
@@ -196,9 +201,17 @@ var weiboExternalTokenOnce sync.Once
 // getWeiboExternalTokenManager 获取微博外部 Token 管理器
 func getWeiboExternalTokenManager() *TokenManager {
 	weiboExternalTokenOnce.Do(func() {
-		weiboExternalTokenManager = NewTokenManager(WeiboTokenDirEnv)
-		// 尝试加载，如果失败则不标记为加载成功
-		_ = weiboExternalTokenManager.Load()
+		// 优先从配置读取 token_dir，如果不存在则使用环境变量
+		tokenDir := viper.GetString(KeyWeiboTokenDir)
+		if tokenDir == "" {
+			tokenDir = os.Getenv(WeiboTokenDirEnv)
+		}
+		if tokenDir == "" {
+			return
+		}
+		weiboExternalTokenManager = NewTokenManager("")
+		// 直接从配置的路径加载
+		_ = weiboExternalTokenManager.LoadFromDir(tokenDir)
 	})
 	return weiboExternalTokenManager
 }

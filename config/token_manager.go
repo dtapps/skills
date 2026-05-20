@@ -55,16 +55,21 @@ func NewTokenManager(envVar string) *TokenManager {
 // Load 加载 Token 配置文件
 // 读取指定目录下的所有 .json 文件
 func (tm *TokenManager) Load() error {
+	dirPath := os.Getenv(tm.envVar)
+	if dirPath == "" {
+		return fmt.Errorf("环境变量 %s 未设置", tm.envVar)
+	}
+	return tm.LoadFromDir(dirPath)
+}
+
+// LoadFromDir 从指定目录加载 Token 配置文件
+// 读取目录下的所有 .json 文件
+func (tm *TokenManager) LoadFromDir(dirPath string) error {
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
 
 	if tm.loaded {
 		return nil
-	}
-
-	dirPath := os.Getenv(tm.envVar)
-	if dirPath == "" {
-		return fmt.Errorf("环境变量 %s 未设置", tm.envVar)
 	}
 
 	// 检查目录是否存在
