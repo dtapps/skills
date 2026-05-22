@@ -24,6 +24,12 @@ const (
 	WeiboAPITokenEnv = "WEIBO_API_TOKEN"
 	// WeiboTokenDirEnv 微博 Token 目录环境变量
 	WeiboTokenDirEnv = "WEIBO_TOKEN_DIR"
+	// BaiduMapAPIKeyEnv 百度地图 API Key 环境变量
+	BaiduMapAPIKeyEnv = "BAIDU_MAP_API_KEY"
+	// AmapMapAPIKeyEnv 高德地图 API Key 环境变量
+	AmapMapAPIKeyEnv = "AMAP_MAP_API_KEY"
+	// TencentMapAPIKeyEnv 腾讯地图 API Key 环境变量
+	TencentMapAPIKeyEnv = "TENCENT_MAP_API_KEY"
 )
 
 // GetWorkDirEnv 获取工作目录环境变量名 (动态生成: {PROJECT_NAME}_WORK_DIR)
@@ -43,6 +49,12 @@ const (
 	KeyWeiboAPIToken = "api_tokens.weibo"
 	// KeyWeiboTokenDir 微博 Token 目录配置键
 	KeyWeiboTokenDir = "api_tokens.weibo.token_dir"
+	// KeyBaiduMapAPIKey 百度地图 API Key 配置键
+	KeyBaiduMapAPIKey = "api_keys.baidu_map"
+	// KeyAmapMapAPIKey 高德地图 API Key 配置键
+	KeyAmapMapAPIKey = "api_keys.amap_map"
+	// KeyTencentMapAPIKey 腾讯地图 API Key 配置键
+	KeyTencentMapAPIKey = "api_keys.tencent_map"
 	// KeyRestyDebug Resty Debug 配置键
 	KeyRestyDebug = "debug.resty"
 	// KeySkillsPath 技能包路径配置键
@@ -93,6 +105,9 @@ func LoadConfig() error {
 	_ = viper.BindEnv(KeyHefengAPIKey, HefengAPIKeyEnv)
 	_ = viper.BindEnv(KeyWeiboAPIToken, WeiboAPITokenEnv)
 	_ = viper.BindEnv(KeyWeiboTokenDir, WeiboTokenDirEnv)
+	_ = viper.BindEnv(KeyBaiduMapAPIKey, BaiduMapAPIKeyEnv)
+	_ = viper.BindEnv(KeyAmapMapAPIKey, AmapMapAPIKeyEnv)
+	_ = viper.BindEnv(KeyTencentMapAPIKey, TencentMapAPIKeyEnv)
 
 	// 读取配置文件
 	err := viper.ReadInConfig()
@@ -135,6 +150,21 @@ func GetWeiboAPIToken() string {
 // GetWeiboTokenDir 获取微博 Token 目录
 func GetWeiboTokenDir() string {
 	return viper.GetString(KeyWeiboTokenDir)
+}
+
+// GetBaiduMapAPIKey 获取百度地图 API Key
+func GetBaiduMapAPIKey() string {
+	return viper.GetString(KeyBaiduMapAPIKey)
+}
+
+// GetAmapMapAPIKey 获取高德地图 API Key
+func GetAmapMapAPIKey() string {
+	return viper.GetString(KeyAmapMapAPIKey)
+}
+
+// GetTencentMapAPIKey 获取腾讯地图 API Key
+func GetTencentMapAPIKey() string {
+	return viper.GetString(KeyTencentMapAPIKey)
 }
 
 // IsRestyDebugEnabled 是否开启 Resty Debug 模式
@@ -286,6 +316,87 @@ func GetHefengAPIKeyNext() string {
 // GetHefengAPIKeys 获取所有和风天气 API Key
 func GetHefengAPIKeys() []string {
 	return getHefengKeyManager().GetAll()
+}
+
+// baiduMapKeyManager 百度地图 API Key 管理器（懒加载）
+var baiduMapKeyManager *APIKeyManager
+var baiduMapKeyOnce sync.Once
+
+// getBaiduMapKeyManager 获取百度地图 Key 管理器
+func getBaiduMapKeyManager() *APIKeyManager {
+	baiduMapKeyOnce.Do(func() {
+		baiduMapKeyManager = NewAPIKeyManager(KeyBaiduMapAPIKey, BaiduMapAPIKeyEnv)
+	})
+	return baiduMapKeyManager
+}
+
+// amapMapKeyManager 高德地图 API Key 管理器（懒加载）
+var amapMapKeyManager *APIKeyManager
+var amapMapKeyOnce sync.Once
+
+// getAmapMapKeyManager 获取高德地图 Key 管理器
+func getAmapMapKeyManager() *APIKeyManager {
+	amapMapKeyOnce.Do(func() {
+		amapMapKeyManager = NewAPIKeyManager(KeyAmapMapAPIKey, AmapMapAPIKeyEnv)
+	})
+	return amapMapKeyManager
+}
+
+// tencentMapKeyManager 腾讯地图 API Key 管理器（懒加载）
+var tencentMapKeyManager *APIKeyManager
+var tencentMapKeyOnce sync.Once
+
+// getTencentMapKeyManager 获取腾讯地图 Key 管理器
+func getTencentMapKeyManager() *APIKeyManager {
+	tencentMapKeyOnce.Do(func() {
+		tencentMapKeyManager = NewAPIKeyManager(KeyTencentMapAPIKey, TencentMapAPIKeyEnv)
+	})
+	return tencentMapKeyManager
+}
+
+// GetBaiduMapAPIKeyRandom 随机获取一个百度地图 API Key
+func GetBaiduMapAPIKeyRandom() string {
+	return getBaiduMapKeyManager().GetRandom()
+}
+
+// GetBaiduMapAPIKeyNext 轮询获取下一个百度地图 API Key
+func GetBaiduMapAPIKeyNext() string {
+	return getBaiduMapKeyManager().GetNext()
+}
+
+// GetBaiduMapAPIKeys 获取所有百度地图 API Key
+func GetBaiduMapAPIKeys() []string {
+	return getBaiduMapKeyManager().GetAll()
+}
+
+// GetAmapMapAPIKeyRandom 随机获取一个高德地图 API Key
+func GetAmapMapAPIKeyRandom() string {
+	return getAmapMapKeyManager().GetRandom()
+}
+
+// GetAmapMapAPIKeyNext 轮询获取下一个高德地图 API Key
+func GetAmapMapAPIKeyNext() string {
+	return getAmapMapKeyManager().GetNext()
+}
+
+// GetAmapMapAPIKeys 获取所有高德地图 API Key
+func GetAmapMapAPIKeys() []string {
+	return getAmapMapKeyManager().GetAll()
+}
+
+// GetTencentMapAPIKeyRandom 随机获取一个腾讯地图 API Key
+func GetTencentMapAPIKeyRandom() string {
+	return getTencentMapKeyManager().GetRandom()
+}
+
+// GetTencentMapAPIKeyNext 轮询获取下一个腾讯地图 API Key
+func GetTencentMapAPIKeyNext() string {
+	return getTencentMapKeyManager().GetNext()
+}
+
+// GetTencentMapAPIKeys 获取所有腾讯地图 API Key
+func GetTencentMapAPIKeys() []string {
+	return getTencentMapKeyManager().GetAll()
 }
 
 // GetWeiboAPITokenRandom 随机获取一个微博 API Token

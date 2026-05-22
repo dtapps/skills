@@ -44,7 +44,7 @@ func (s *JiaozhenFactCheckSkill) GetInfo() types.SkillInfo {
 	}
 }
 
-// createCommand 创建命令定义（只定义一次）
+// createCommand 创建命令定义
 func (s *JiaozhenFactCheckSkill) createCommand() *cobra.Command {
 	info := s.GetInfo()
 	cmd := &cobra.Command{

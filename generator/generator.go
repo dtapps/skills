@@ -21,10 +21,10 @@ var templatesFS embed.FS
 // SkillTemplateData 技能模板数据
 type SkillTemplateData struct {
 	types.SkillInfo
-	CliName         string
-	CommandsStr     string
-	AllowedToolsStr string
-	Date            string
+	CliName         string // 命令行工具名称
+	CommandsStr     string // 命令字符串
+	AllowedToolsStr string // 允许工具工具字符串
+	Date            string // 日期字符串
 }
 
 // GenerateSkill 生成 skill 目录和文件

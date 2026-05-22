@@ -44,6 +44,14 @@ config-path:
 	@mkdir -p $(DTSKILLS_WORK_DIR)
 	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . config path
 
+# 交互删除 配置文件项
+# make config-remove
+.PHONY: config-remove
+config-remove:
+	@echo "[配置] 交互删除配置文件项..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . config remove
+
 #####################
 
 # 获取 统计数据
@@ -220,6 +228,72 @@ hefeng-weather-air-quality:
 	@echo "[和风天气] 获取天气空气质量..."
 	@mkdir -p $(DTSKILLS_WORK_DIR)
 	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . hefeng-weather air-quality --location "$(LOCATION)" $(VERBOSE)
+
+#####################
+
+# 百度地图 获取天气
+# make baidu-map-weather DISTRICT_ID=440300
+# make baidu-map-weather DISTRICT_ID=440300 MINIFY="--minify"
+.PHONY: baidu-map-weather
+baidu-map-weather:
+	@echo "[百度地图] 获取天气..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . baidu-map weather --district_id "$(DISTRICT_ID)" $(MINIFY)
+
+# 百度地图 获取IP定位
+# make baidu-map-ip-location
+# make baidu-map-ip-location MINIFY="--minify"
+.PHONY: baidu-map-ip-location
+baidu-map-ip-location:
+	@echo "[百度地图] 获取IP定位..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . baidu-map ip-location $(MINIFY)
+
+#####################
+
+# 高德地图 获取天气
+# make amap-map-weather CITY=440300
+# make amap-map-weather CITY=440300 MINIFY="--minify"
+.PHONY: amap-map-weather
+amap-map-weather:
+	@echo "[高德地图] 获取天气..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . amap-map weather --city "$(CITY)" $(MINIFY)
+
+# 高德地图 获取IP定位
+# make amap-map-ip-location IP=114.247.50.2
+# make amap-map-ip-location IP=114.247.50.2 MINIFY="--minify"
+.PHONY: amap-map-ip-location
+amap-map-ip-location:
+	@echo "[高德地图] 获取IP定位..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . amap-map ip-location --ip "$(IP)" $(MINIFY)
+
+#####################
+
+# 腾讯地图 获取当前天气
+# make tencent-map-current-weather ADCODE=440300
+.PHONY: tencent-map-current-weather
+tencent-map-current-weather:
+	@echo "[腾讯地图] 获取当前天气..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . tencent-map current-weather --adcode "$(ADCODE)"
+
+# 腾讯地图 获取天气预报
+# make tencent-map-forecast-weather ADCODE=440300
+.PHONY: tencent-map-forecast-weather
+tencent-map-forecast-weather:
+	@echo "[腾讯地图] 获取天气预报..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . tencent-map forecast-weather --adcode "$(ADCODE)"
+
+# 腾讯地图 获取IP定位
+# make tencent-map-ip-location
+.PHONY: tencent-map-ip-location
+tencent-map-ip-location:
+	@echo "[腾讯地图] 获取IP定位..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . tencent-map ip-location
 
 #####################
 ## 检查相关

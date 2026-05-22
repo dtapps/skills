@@ -70,7 +70,7 @@ func GetCommandOutputFields() []CommandOutputField {
 	}
 }
 
-// createCommand 创建命令定义（只定义一次）
+// createCommand 创建命令定义
 func (s *TencentNewsSkill) createCommand() *cobra.Command {
 	info := s.GetInfo()
 	cmd := &cobra.Command{

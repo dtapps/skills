@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/dtapp/skills/types"
 	"github.com/spf13/cobra"
@@ -71,13 +72,47 @@ func extractFlagsFromCobra(cmd *cobra.Command) []types.Flag {
 
 // ExtractOutputFieldsFromStruct 从结构体反射获取输出字段信息
 // 从 json tag 获取字段名，从 description tag 获取描述
-// 返回的字段按名称排序，确保生成结果稳定
+// 支持递归处理嵌套结构体，返回的字段按名称排序，确保生成结果稳定
 func ExtractOutputFieldsFromStruct(s any) []types.OutputField {
+	if s == nil {
+		return nil
+	}
+	return extractOutputFieldsRecursive(reflect.TypeOf(s), "")
+}
+
+// extractOutputFieldsRecursive 递归提取输出字段
+func extractOutputFieldsRecursive(t reflect.Type, prefix string) []types.OutputField {
 	var fields []types.OutputField
-	t := reflect.TypeOf(s)
-	for field := range t.Fields() {
+
+	// 处理指针类型
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+
+	// 处理切片/数组类型，获取元素类型
+	if t.Kind() == reflect.Slice || t.Kind() == reflect.Array {
+		t = t.Elem()
+		// 如果元素还是指针，继续解引用
+		if t.Kind() == reflect.Ptr {
+			t = t.Elem()
+		}
+		// 如果元素是结构体，递归处理（保持当前前缀）
+		if t.Kind() == reflect.Struct && t != reflect.TypeOf(time.Time{}) {
+			return extractOutputFieldsRecursive(t, prefix)
+		}
+		return fields
+	}
+
+	// 只处理结构体类型
+	if t.Kind() != reflect.Struct {
+		return fields
+	}
+
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+
+		// 获取 json tag
 		jsonTag := field.Tag.Get("json")
-		// 提取 json tag 中的字段名（去掉 omitempty 等选项）
 		fieldName := jsonTag
 		if before, _, ok := strings.Cut(jsonTag, ","); ok {
 			fieldName = before
@@ -85,13 +120,51 @@ func ExtractOutputFieldsFromStruct(s any) []types.OutputField {
 		if fieldName == "" {
 			fieldName = field.Name
 		}
-		// 从 description tag 获取描述
+
+		// 构建完整字段名（带前缀）
+		fullName := fieldName
+		if prefix != "" {
+			fullName = prefix + "." + fieldName
+		}
+
+		// 获取描述
 		desc := field.Tag.Get("description")
-		fields = append(fields, types.OutputField{
-			Name:        fieldName,
-			Description: desc,
-		})
+
+		// 检查字段类型
+		fieldType := field.Type
+		if fieldType.Kind() == reflect.Ptr {
+			fieldType = fieldType.Elem()
+		}
+
+		// 如果是结构体类型，递归处理
+		if fieldType.Kind() == reflect.Struct && fieldType != reflect.TypeOf(time.Time{}) {
+			nestedFields := extractOutputFieldsRecursive(fieldType, fullName)
+			fields = append(fields, nestedFields...)
+		} else if fieldType.Kind() == reflect.Slice || fieldType.Kind() == reflect.Array {
+			// 处理切片/数组类型的字段
+			elemType := fieldType.Elem()
+			if elemType.Kind() == reflect.Ptr {
+				elemType = elemType.Elem()
+			}
+			if elemType.Kind() == reflect.Struct && elemType != reflect.TypeOf(time.Time{}) {
+				nestedFields := extractOutputFieldsRecursive(elemType, fullName)
+				fields = append(fields, nestedFields...)
+			} else {
+				// 基本类型的数组，只显示字段本身
+				fields = append(fields, types.OutputField{
+					Name:        fullName,
+					Description: desc,
+				})
+			}
+		} else {
+			// 普通字段
+			fields = append(fields, types.OutputField{
+				Name:        fullName,
+				Description: desc,
+			})
+		}
 	}
+
 	// 按字段名排序，确保生成结果稳定
 	sort.Slice(fields, func(i, j int) bool {
 		return fields[i].Name < fields[j].Name
