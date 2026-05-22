@@ -32,6 +32,10 @@ const (
 	TencentMapAPIKeyEnv = "TENCENT_MAP_API_KEY"
 	// UAPIKeyEnv UAPI Key 环境变量
 	UAPIKeyEnv = "UAPI_KEY"
+	// CrawlerMCPURLEnv Crawler MCP URL 环境变量
+	CrawlerMCPURLEnv = "CRAWLER_MCP_URL"
+	// CrawlerMCPTokenEnv Crawler MCP Token 环境变量
+	CrawlerMCPTokenEnv = "CRAWLER_MCP_TOKEN"
 )
 
 // GetWorkDirEnv 获取工作目录环境变量名 (动态生成: {PROJECT_NAME}_WORK_DIR)
@@ -59,6 +63,10 @@ const (
 	KeyTencentMapAPIKey = "api_keys.tencent_map"
 	// KeyUAPIKey UAPI Key 配置键
 	KeyUAPIKey = "api_keys.uapi"
+	// KeyCrawlerMCPURL Crawler MCP URL 配置键
+	KeyCrawlerMCPURL = "mcp.crawler.url"
+	// KeyCrawlerMCPToken Crawler MCP Token 配置键
+	KeyCrawlerMCPToken = "mcp.crawler.token"
 	// KeyRestyDebug Resty Debug 配置键
 	KeyRestyDebug = "debug.resty"
 	// KeySkillsPath 技能包路径配置键
@@ -113,6 +121,8 @@ func LoadConfig() error {
 	_ = viper.BindEnv(KeyAmapMapAPIKey, AmapMapAPIKeyEnv)
 	_ = viper.BindEnv(KeyTencentMapAPIKey, TencentMapAPIKeyEnv)
 	_ = viper.BindEnv(KeyUAPIKey, UAPIKeyEnv)
+	_ = viper.BindEnv(KeyCrawlerMCPURL, CrawlerMCPURLEnv)
+	_ = viper.BindEnv(KeyCrawlerMCPToken, CrawlerMCPTokenEnv)
 
 	// 读取配置文件
 	err := viper.ReadInConfig()
@@ -175,6 +185,16 @@ func GetTencentMapAPIKey() string {
 // GetUAPIKey 获取 UAPI Key
 func GetUAPIKey() string {
 	return viper.GetString(KeyUAPIKey)
+}
+
+// GetCrawlerMCPURL 获取 Crawler MCP URL
+func GetCrawlerMCPURL() string {
+	return viper.GetString(KeyCrawlerMCPURL)
+}
+
+// GetCrawlerMCPToken 获取 Crawler MCP Token
+func GetCrawlerMCPToken() string {
+	return viper.GetString(KeyCrawlerMCPToken)
 }
 
 // IsRestyDebugEnabled 是否开启 Resty Debug 模式

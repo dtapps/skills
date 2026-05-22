@@ -14,6 +14,7 @@ import (
 	"github.com/dtapp/skills/skills/baidu_map"
 	"github.com/dtapp/skills/skills/baidu_search"
 	"github.com/dtapp/skills/skills/cma_weather"
+	"github.com/dtapp/skills/skills/crawler"
 	"github.com/dtapp/skills/skills/hefeng_weather"
 	"github.com/dtapp/skills/skills/sojson"
 	"github.com/dtapp/skills/skills/tencent_map"
@@ -60,6 +61,7 @@ func runGenerate(cmd *cobra.Command, args []string) {
 		cma_weather.GetSkillInfo(),
 		uapi.GetSkillInfo(),
 		sojson.GetSkillInfo(),
+		crawler.GetSkillInfo(),
 	}
 
 	// 构建选项列表（显示中文名称、原名字和版本号）
@@ -329,6 +331,7 @@ func main() {
 	rootCmd.AddCommand(stats.WrapSkillCommands(cma_weather.NewCmaWeatherCmd()))
 	rootCmd.AddCommand(stats.WrapSkillCommands(uapi.NewUapiCmd()))
 	rootCmd.AddCommand(stats.WrapSkillCommands(sojson.NewSojsonCmd()))
+	rootCmd.AddCommand(stats.WrapSkillCommands(crawler.NewCrawlerCmd()))
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)

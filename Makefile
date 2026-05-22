@@ -346,6 +346,44 @@ uapi-weather:
 	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . uapi weather --adcode "$(ADCODE)" $(MINIFY)
 
 #####################
+
+# 爬虫 获取黄金价格全部数据
+# make crawler-gold-price-data DATE=2026-05-22
+# make crawler-gold-price-data DATE=2026-05-22 MINIFY="--minify"
+.PHONY: crawler-gold-price-data
+crawler-gold-price-data:
+	@echo "[爬虫] 获取黄金价格全部数据..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . crawler gold-price-data --date "$(DATE)" $(MINIFY)
+
+# 爬虫 获取最新黄金价格
+# make crawler-latest-gold-price DATE=2026-05-22
+# make crawler-latest-gold-price DATE=2026-05-22 MINIFY="--minify"
+.PHONY: crawler-latest-gold-price
+crawler-latest-gold-price:
+	@echo "[爬虫] 获取最新黄金价格..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . crawler latest-gold-price --date "$(DATE)" $(MINIFY)
+
+# 爬虫 获取热搜数据
+# make crawler-hot-data DATE=2026-05-22
+# make crawler-hot-data DATE=2026-05-22 MINIFY="--minify"
+.PHONY: crawler-hot-data
+crawler-hot-data:
+	@echo "[爬虫] 获取热搜数据..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . crawler hot-data --date "$(DATE)" $(MINIFY)
+
+# 爬虫 获取天气数据
+# make crawler-weather-data CITY=广州 DATE=2026-05-22
+# make crawler-weather-data CITY=广州 DATE=2026-05-22 MINIFY="--minify"
+.PHONY: crawler-weather-data
+crawler-weather-data:
+	@echo "[爬虫] 获取天气数据..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . crawler weather-data --city "$(CITY)" --date "$(DATE)" $(MINIFY)
+
+#####################
 ## 检查相关
 #####################
 
