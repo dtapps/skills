@@ -15,12 +15,12 @@ func GetWeather(districtID, location string, isChina bool, caller string) (json.
 	if err != nil {
 		return nil, err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 
 	// 构建参数（is_china 需要作为字符串传递）
-	params := map[string]interface{}{
+	params := map[string]any{
 		"is_china": "true",
 	}
 	if !isChina {
@@ -70,12 +70,12 @@ func GetIpLocation(ip string, caller string) (json.RawMessage, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 
 	// 构建参数
-	params := map[string]interface{}{}
+	params := map[string]any{}
 	if ip != "" {
 		params["ip"] = ip
 	}

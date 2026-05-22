@@ -15,12 +15,12 @@ func GetWeather(city string, caller string) (json.RawMessage, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 
 	// 构建参数
-	params := map[string]interface{}{}
+	params := map[string]any{}
 	if city != "" {
 		params["city"] = city
 	}
@@ -62,12 +62,12 @@ func GetIpLocation(ip string, caller string) (json.RawMessage, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 
 	// 构建参数
-	params := map[string]interface{}{}
+	params := map[string]any{}
 	if ip != "" {
 		params["ip"] = ip
 	}

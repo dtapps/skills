@@ -116,32 +116,32 @@ func newConfigAddCmd() *cobra.Command {
 }
 
 // formatConfigValue 格式化配置值，递归展开嵌套结构
-func formatConfigValue(value interface{}, indent string) string {
+func formatConfigValue(value any, indent string) string {
 	switch v := value.(type) {
-	case map[string]interface{}:
+	case map[string]any:
 		if len(v) == 0 {
 			return "{}"
 		}
-		var result string
+		var result strings.Builder
 		for k, val := range v {
 			formatted := formatConfigValue(val, indent+"  ")
 			if strings.Contains(formatted, "\n") {
-				result += fmt.Sprintf("\n%s%s:", indent, k) + formatted
+				_, _ = fmt.Fprintf(&result, "\n%s%s:%s", indent, k, formatted)
 			} else {
-				result += fmt.Sprintf("\n%s%s: %s", indent, k, formatted)
+				_, _ = fmt.Fprintf(&result, "\n%s%s: %s", indent, k, formatted)
 			}
 		}
-		return result
-	case []interface{}:
+		return result.String()
+	case []any:
 		if len(v) == 0 {
 			return "[]"
 		}
-		var result string
+		var result strings.Builder
 		for i, val := range v {
 			formatted := formatConfigValue(val, indent+"  ")
-			result += fmt.Sprintf("\n%s[%d]: %s", indent, i, formatted)
+			_, _ = fmt.Fprintf(&result, "\n%s[%d]: %s", indent, i, formatted)
 		}
-		return result
+		return result.String()
 	case string:
 		if v == "" {
 			return "(空)"
@@ -159,7 +159,7 @@ func formatConfigValue(value interface{}, indent string) string {
 }
 
 // flattenConfig 将嵌套配置展平为可选项列表
-func flattenConfig(cfg map[string]interface{}, prefix string) []struct {
+func flattenConfig(cfg map[string]any, prefix string) []struct {
 	Key     string
 	Display string
 } {
@@ -175,7 +175,7 @@ func flattenConfig(cfg map[string]interface{}, prefix string) []struct {
 		}
 
 		switch v := value.(type) {
-		case map[string]interface{}:
+		case map[string]any:
 			// 递归展平嵌套 map
 			subItems := flattenConfig(v, fullKey)
 			result = append(result, subItems...)

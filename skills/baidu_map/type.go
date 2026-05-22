@@ -61,8 +61,8 @@ type ForecastItem struct {
 // WeatherSimpleResult 天气美化输出结构体
 // https://lbsyun.baidu.com/docs/webapi?title=weatherinquiry/weather/base
 type WeatherSimpleResult struct {
-	Location Location       `json:"location,omitempty" description:"地理位置信息"`
-	Now      NowWeather     `json:"now,omitempty" description:"实况数据"`
+	Location Location       `json:"location" description:"地理位置信息"`
+	Now      NowWeather     `json:"now" description:"实况数据"`
 	Indexes  []IndexItem    `json:"indexes,omitempty" description:"生活指数数据"`
 	Forecast []ForecastItem `json:"forecast,omitempty" description:"预报数据"`
 }

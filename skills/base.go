@@ -85,7 +85,7 @@ func extractOutputFieldsRecursive(t reflect.Type, prefix string) []types.OutputF
 	var fields []types.OutputField
 
 	// 处理指针类型
-	if t.Kind() == reflect.Ptr {
+	if t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
 
@@ -93,11 +93,11 @@ func extractOutputFieldsRecursive(t reflect.Type, prefix string) []types.OutputF
 	if t.Kind() == reflect.Slice || t.Kind() == reflect.Array {
 		t = t.Elem()
 		// 如果元素还是指针，继续解引用
-		if t.Kind() == reflect.Ptr {
+		if t.Kind() == reflect.Pointer {
 			t = t.Elem()
 		}
 		// 如果元素是结构体，递归处理（保持当前前缀）
-		if t.Kind() == reflect.Struct && t != reflect.TypeOf(time.Time{}) {
+		if t.Kind() == reflect.Struct && t != reflect.TypeFor[time.Time]() {
 			return extractOutputFieldsRecursive(t, prefix)
 		}
 		return fields
@@ -108,8 +108,7 @@ func extractOutputFieldsRecursive(t reflect.Type, prefix string) []types.OutputF
 		return fields
 	}
 
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
+	for field := range t.Fields() {
 
 		// 获取 json tag
 		jsonTag := field.Tag.Get("json")
@@ -132,21 +131,21 @@ func extractOutputFieldsRecursive(t reflect.Type, prefix string) []types.OutputF
 
 		// 检查字段类型
 		fieldType := field.Type
-		if fieldType.Kind() == reflect.Ptr {
+		if fieldType.Kind() == reflect.Pointer {
 			fieldType = fieldType.Elem()
 		}
 
 		// 如果是结构体类型，递归处理
-		if fieldType.Kind() == reflect.Struct && fieldType != reflect.TypeOf(time.Time{}) {
+		if fieldType.Kind() == reflect.Struct && fieldType != reflect.TypeFor[time.Time]() {
 			nestedFields := extractOutputFieldsRecursive(fieldType, fullName)
 			fields = append(fields, nestedFields...)
 		} else if fieldType.Kind() == reflect.Slice || fieldType.Kind() == reflect.Array {
 			// 处理切片/数组类型的字段
 			elemType := fieldType.Elem()
-			if elemType.Kind() == reflect.Ptr {
+			if elemType.Kind() == reflect.Pointer {
 				elemType = elemType.Elem()
 			}
-			if elemType.Kind() == reflect.Struct && elemType != reflect.TypeOf(time.Time{}) {
+			if elemType.Kind() == reflect.Struct && elemType != reflect.TypeFor[time.Time]() {
 				nestedFields := extractOutputFieldsRecursive(elemType, fullName)
 				fields = append(fields, nestedFields...)
 			} else {

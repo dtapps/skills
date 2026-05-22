@@ -14,12 +14,12 @@ func GetCurrentWeather(adcode, location string, caller string) (*string, error) 
 	if err != nil {
 		return nil, err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 
 	// 构建参数（type 需要作为字符串传递）
-	params := map[string]interface{}{
+	params := map[string]any{
 		"type": "now",
 	}
 	if adcode != "" {
@@ -55,12 +55,12 @@ func GetForecastWeather(adcode, location string, caller string) (*string, error)
 	if err != nil {
 		return nil, err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 
 	// 构建参数（type 需要作为字符串传递）
-	params := map[string]interface{}{
+	params := map[string]any{
 		"type": "future",
 	}
 	if adcode != "" {
@@ -96,12 +96,12 @@ func GetIpLocation(ip string, caller string) (*string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 
 	// 构建参数
-	params := map[string]interface{}{}
+	params := map[string]any{}
 	if ip != "" {
 		params["ip"] = ip
 	}

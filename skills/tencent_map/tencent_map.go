@@ -140,7 +140,7 @@ func (s *TencentMapSkill) createCurrentWeatherCmd() *cobra.Command {
 			}
 
 			// 语义化输出
-			cmd.Println(string(*resp))
+			cmd.Println(*resp)
 		},
 	}
 
@@ -179,7 +179,7 @@ func (s *TencentMapSkill) createForecastWeatherCmd() *cobra.Command {
 			}
 
 			// 语义化输出
-			cmd.Println(string(*resp))
+			cmd.Println(*resp)
 		},
 	}
 
@@ -212,7 +212,7 @@ func (s *TencentMapSkill) createIpLocationCmd() *cobra.Command {
 			}
 
 			// 语义化输出
-			cmd.Println(string(*resp))
+			cmd.Println(*resp)
 		},
 	}
 

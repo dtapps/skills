@@ -68,7 +68,7 @@ func (c *MCPClient) Close() error {
 }
 
 // CallTool 调用 MCP Tool
-func (c *MCPClient) CallTool(ctx context.Context, toolName string, params map[string]interface{}) (*mcp.CallToolResult, error) {
+func (c *MCPClient) CallTool(ctx context.Context, toolName string, params map[string]any) (*mcp.CallToolResult, error) {
 	return c.session.CallTool(ctx, &mcp.CallToolParams{
 		Name:      toolName,
 		Arguments: params,

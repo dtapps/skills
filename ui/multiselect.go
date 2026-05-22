@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"slices"
+
 	"charm.land/huh/v2"
 )
 
@@ -45,15 +47,13 @@ func RunMultiSelect(message string, options []Option) ([]string, error) {
 	}
 
 	// 检查是否选择了全选
-	for _, v := range selectedValues {
-		if v == "__ALL__" {
-			// 返回所有选项（排除全选标记）
-			result := make([]string, len(options))
-			for i, opt := range options {
-				result[i] = opt.Value
-			}
-			return result, nil
+	if slices.Contains(selectedValues, "__ALL__") {
+		// 返回所有选项（排除全选标记）
+		result := make([]string, len(options))
+		for i, opt := range options {
+			result[i] = opt.Value
 		}
+		return result, nil
 	}
 
 	return selectedValues, nil
