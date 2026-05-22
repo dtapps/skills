@@ -37,7 +37,7 @@ func (s *UapiSkill) GetInfo() types.SkillInfo {
 		Title:       "UAPI",
 		Version:     "1.0.0",
 		Author:      "dtapp",
-		Description: "UAPI工具，提供天气、IP定位等服务。",
+		Description: "UAPI工具，提供天气服务。",
 		Homepage:    "https://cnb.cool/dtapp/skills",
 	}
 }

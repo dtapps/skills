@@ -37,7 +37,7 @@ func (s *SojsonSkill) GetInfo() types.SkillInfo {
 		Title:       "SoJSON",
 		Version:     "1.0.0",
 		Author:      "dtapp",
-		Description: "SoJSON工具，提供天气、IP定位等服务。",
+		Description: "SoJSON工具，提供天气服务。",
 		Homepage:    "https://cnb.cool/dtapp/skills",
 	}
 }
