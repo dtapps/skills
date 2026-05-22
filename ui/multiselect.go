@@ -90,7 +90,7 @@ func RunSelect(message string, options []Option) (string, error) {
 
 // RunConfirm 运行确认并返回结果
 func RunConfirm(message string, defaultValue bool) bool {
-	var value bool
+	value := defaultValue
 
 	// 创建确认组件
 	field := huh.NewConfirm().
@@ -103,8 +103,8 @@ func RunConfirm(message string, defaultValue bool) bool {
 	form := huh.NewForm(huh.NewGroup(field))
 	err := form.Run()
 	if err != nil {
-		// 出错时（如用户中断 Ctrl+C）返回 false，取消操作
-		return false
+		// 出错时（如用户中断 Ctrl+C）返回默认值
+		return defaultValue
 	}
 
 	return value
