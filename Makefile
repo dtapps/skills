@@ -313,6 +313,39 @@ tencent-map-ip-location:
 	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . tencent-map ip-location
 
 #####################
+
+# 中国气象局天气 获取实时天气
+# make cma-weather-current-now CITY=59493
+# make cma-weather-current-now CITY=59493 MINIFY="--minify"
+.PHONY: cma-weather-current-now
+cma-weather-current-now:
+	@echo "[中国气象局天气] 获取实时天气..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . cma-weather now --city "$(CITY)" $(MINIFY)
+
+#####################
+
+# SoJSON 获取实时天气
+# make sojson-weather CITY=101030100
+# make sojson-weather CITY=101030100 MINIFY="--minify"
+.PHONY: sojson-weather
+sojson-weather:
+	@echo "[SoJSON] 获取实时天气..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . sojson weather --city "$(CITY)" $(MINIFY)
+
+#####################
+
+# UAPI 获取实时天气
+# make uapi-weather ADCODE=440300
+# make uapi-weather ADCODE=440300 MINIFY="--minify"
+.PHONY: uapi-weather
+uapi-weather:
+	@echo "[UAPI] 获取实时天气..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . uapi weather --adcode "$(ADCODE)" $(MINIFY)
+
+#####################
 ## 检查相关
 #####################
 

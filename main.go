@@ -13,10 +13,13 @@ import (
 	"github.com/dtapp/skills/skills/baidu_baike"
 	"github.com/dtapp/skills/skills/baidu_map"
 	"github.com/dtapp/skills/skills/baidu_search"
+	"github.com/dtapp/skills/skills/cma_weather"
 	"github.com/dtapp/skills/skills/hefeng_weather"
+	"github.com/dtapp/skills/skills/sojson"
 	"github.com/dtapp/skills/skills/tencent_map"
 	"github.com/dtapp/skills/skills/tencent_news"
 	"github.com/dtapp/skills/skills/tencent_weather"
+	"github.com/dtapp/skills/skills/uapi"
 	"github.com/dtapp/skills/skills/weibo_search"
 	"github.com/dtapp/skills/stats"
 	"github.com/dtapp/skills/types"
@@ -54,6 +57,9 @@ func runGenerate(cmd *cobra.Command, args []string) {
 		baidu_map.GetSkillInfo(),
 		amap_map.GetSkillInfo(),
 		tencent_map.GetSkillInfo(),
+		cma_weather.GetSkillInfo(),
+		uapi.GetSkillInfo(),
+		sojson.GetSkillInfo(),
 	}
 
 	// 构建选项列表（显示中文名称、原名字和版本号）
@@ -320,6 +326,9 @@ func main() {
 	rootCmd.AddCommand(stats.WrapSkillCommands(baidu_map.NewBaiduMapSkill().GetCommand()))
 	rootCmd.AddCommand(stats.WrapSkillCommands(amap_map.NewAmapMapSkill().GetCommand()))
 	rootCmd.AddCommand(stats.WrapSkillCommands(tencent_map.NewTencentMapSkill().GetCommand()))
+	rootCmd.AddCommand(stats.WrapSkillCommands(cma_weather.NewCmaWeatherCmd()))
+	rootCmd.AddCommand(stats.WrapSkillCommands(uapi.NewUapiCmd()))
+	rootCmd.AddCommand(stats.WrapSkillCommands(sojson.NewSojsonCmd()))
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)

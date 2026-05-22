@@ -30,6 +30,8 @@ const (
 	AmapMapAPIKeyEnv = "AMAP_MAP_API_KEY"
 	// TencentMapAPIKeyEnv 腾讯地图 API Key 环境变量
 	TencentMapAPIKeyEnv = "TENCENT_MAP_API_KEY"
+	// UAPIKeyEnv UAPI Key 环境变量
+	UAPIKeyEnv = "UAPI_KEY"
 )
 
 // GetWorkDirEnv 获取工作目录环境变量名 (动态生成: {PROJECT_NAME}_WORK_DIR)
@@ -55,6 +57,8 @@ const (
 	KeyAmapMapAPIKey = "api_keys.amap_map"
 	// KeyTencentMapAPIKey 腾讯地图 API Key 配置键
 	KeyTencentMapAPIKey = "api_keys.tencent_map"
+	// KeyUAPIKey UAPI Key 配置键
+	KeyUAPIKey = "api_keys.uapi"
 	// KeyRestyDebug Resty Debug 配置键
 	KeyRestyDebug = "debug.resty"
 	// KeySkillsPath 技能包路径配置键
@@ -108,6 +112,7 @@ func LoadConfig() error {
 	_ = viper.BindEnv(KeyBaiduMapAPIKey, BaiduMapAPIKeyEnv)
 	_ = viper.BindEnv(KeyAmapMapAPIKey, AmapMapAPIKeyEnv)
 	_ = viper.BindEnv(KeyTencentMapAPIKey, TencentMapAPIKeyEnv)
+	_ = viper.BindEnv(KeyUAPIKey, UAPIKeyEnv)
 
 	// 读取配置文件
 	err := viper.ReadInConfig()
@@ -167,6 +172,11 @@ func GetTencentMapAPIKey() string {
 	return viper.GetString(KeyTencentMapAPIKey)
 }
 
+// GetUAPIKey 获取 UAPI Key
+func GetUAPIKey() string {
+	return viper.GetString(KeyUAPIKey)
+}
+
 // IsRestyDebugEnabled 是否开启 Resty Debug 模式
 // 注意：此参数只能从配置文件读取，不能通过环境变量设置
 func IsRestyDebugEnabled() bool {
@@ -196,6 +206,11 @@ func SetHefengAPIKey(apiKey string) {
 // SetWeiboAPIToken 设置微博 API Token
 func SetWeiboAPIToken(apiToken string) {
 	viper.Set(KeyWeiboAPIToken, apiToken)
+}
+
+// SetUAPIKey 设置 UAPI Key
+func SetUAPIKey(apiKey string) {
+	viper.Set(KeyUAPIKey, apiKey)
 }
 
 // SetSkillsPath 设置技能包路径
@@ -341,6 +356,33 @@ func getAmapMapKeyManager() *APIKeyManager {
 		amapMapKeyManager = NewAPIKeyManager(KeyAmapMapAPIKey, AmapMapAPIKeyEnv)
 	})
 	return amapMapKeyManager
+}
+
+// uapiKeyManager UAPI Key 管理器（懒加载）
+var uapiKeyManager *APIKeyManager
+var uapiKeyOnce sync.Once
+
+// getUapiKeyManager 获取 UAPI Key 管理器
+func getUapiKeyManager() *APIKeyManager {
+	uapiKeyOnce.Do(func() {
+		uapiKeyManager = NewAPIKeyManager(KeyUAPIKey, UAPIKeyEnv)
+	})
+	return uapiKeyManager
+}
+
+// GetUAPIKeyRandom 随机获取一个 UAPI Key
+func GetUAPIKeyRandom() string {
+	return getUapiKeyManager().GetRandom()
+}
+
+// GetUAPIKeyNext 轮询获取下一个 UAPI Key
+func GetUAPIKeyNext() string {
+	return getUapiKeyManager().GetNext()
+}
+
+// GetUAPIKeys 获取所有 UAPI Key
+func GetUAPIKeys() []string {
+	return getUapiKeyManager().GetAll()
 }
 
 // tencentMapKeyManager 腾讯地图 API Key 管理器（懒加载）

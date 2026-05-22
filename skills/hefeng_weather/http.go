@@ -37,15 +37,15 @@ func getHTTPClient() *resty.Client {
 	client.SetRetryMaxWaitTime(RetryMaxWaitTime)
 	client.SetHeader("Content-Type", "application/json")
 
-	// 开启 Debug 模式（如果配置文件中启用）
-	if config.IsRestyDebugEnabled() {
-		client.SetDebug(true)
-	}
-
 	// 随机获取一个和风天气 API Key
 	apiKey := config.GetHefengAPIKeyRandom()
 	if apiKey != "" {
 		client.SetQueryParam("key", apiKey)
+	}
+
+	// 开启 Debug 模式（如果配置文件中启用）
+	if config.IsRestyDebugEnabled() {
+		client.SetDebug(true)
 	}
 
 	return client
