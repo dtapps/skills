@@ -150,6 +150,7 @@ func (s *BaiduMapSkill) createWeatherCmd() *cobra.Command {
 		},
 	}
 
+	// 定义 flags
 	cmd.Flags().StringVar(&location, "location", "", "经纬度坐标, 经度在前纬度在后, 逗号分隔")
 	cmd.Flags().StringVar(&districtID, "district_id", "", "行政区划代码, 需保证为6位无符号整数")
 	cmd.Flags().BoolVar(&isChina, "is_china", true, "查询地是否在中国境内(包括香港、澳门、台湾地区), 可选值为`true`或`false`, 默认为`true`; 若请求其他国家或地区, 则需传`false`")
@@ -191,6 +192,7 @@ func (s *BaiduMapSkill) createIpLocationCmd() *cobra.Command {
 		},
 	}
 
+	// 定义 flags
 	cmd.Flags().StringVar(&ip, "ip", "", "需要定位的IP地址, 如果为空则获取用户当前IP地址(支持IPv4和IPv6)")
 	cmd.Flags().BoolVar(&minify, "minify", false, "紧凑输出")
 

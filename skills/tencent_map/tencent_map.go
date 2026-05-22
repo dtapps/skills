@@ -144,6 +144,7 @@ func (s *TencentMapSkill) createCurrentWeatherCmd() *cobra.Command {
 		},
 	}
 
+	// 定义 flags
 	cmd.Flags().StringVar(&adcode, "adcode", "", "行政区划代码，与location经纬度坐标必有其一（可通过调用地址解析获取，输入地址或城市名，返回结果中的adcode即为行政区划代码）")
 	cmd.Flags().StringVar(&location, "location", "", "经纬度坐标，与adcode行政区划代码必有其一，结构是lat,lng")
 
@@ -183,6 +184,7 @@ func (s *TencentMapSkill) createForecastWeatherCmd() *cobra.Command {
 		},
 	}
 
+	// 定义 flags
 	cmd.Flags().StringVar(&adcode, "adcode", "", "行政区划代码，与location经纬度坐标必有其一（可通过调用地址解析获取，输入地址或城市名，返回结果中的adcode即为行政区划代码）")
 	cmd.Flags().StringVar(&location, "location", "", "经纬度坐标，与adcode行政区划代码必有其一，结构是lat,lng")
 
@@ -216,6 +218,7 @@ func (s *TencentMapSkill) createIpLocationCmd() *cobra.Command {
 		},
 	}
 
+	// 定义 flags
 	cmd.Flags().StringVar(&ip, "ip", "", "IP地址(IPv4或IPv6）")
 
 	return cmd

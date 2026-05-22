@@ -204,30 +204,30 @@ weibo-search-smart-search:
 
 # 和风天气 获取当前天气
 # make hefeng-weather-current LOCATION=101280601
-# make hefeng-weather-current LOCATION=101280601 VERBOSE="-v"
+# make hefeng-weather-current LOCATION=101280601 MINIFY="--minify"
 .PHONY: hefeng-weather-current
 hefeng-weather-current:
 	@echo "[和风天气] 获取当前天气..."
 	@mkdir -p $(DTSKILLS_WORK_DIR)
-	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . hefeng-weather current --location "$(LOCATION)" $(VERBOSE)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . hefeng-weather current --location "$(LOCATION)" $(MINIFY)
 
 # 和风天气 获取每日天气预报
 # make hefeng-weather-forecast LOCATION=101280601
-# make hefeng-weather-forecast LOCATION=101280601 VERBOSE="-v"
+# make hefeng-weather-forecast LOCATION=101280601 MINIFY="--minify"
 .PHONY: hefeng-weather-forecast
 hefeng-weather-forecast:
 	@echo "[和风天气] 获取每日天气预报..."
 	@mkdir -p $(DTSKILLS_WORK_DIR)
-	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . hefeng-weather forecast --location "$(LOCATION)" $(VERBOSE)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . hefeng-weather forecast --location "$(LOCATION)" $(MINIFY)
 
 # 和风天气 获取天气空气质量
 # make hefeng-weather-air-quality LOCATION=101280601
-# make hefeng-weather-air-quality LOCATION=101280601 VERBOSE="-v"
+# make hefeng-weather-air-quality LOCATION=101280601 MINIFY="--minify"
 .PHONY: hefeng-weather-air-quality
 hefeng-weather-air-quality:
 	@echo "[和风天气] 获取天气空气质量..."
 	@mkdir -p $(DTSKILLS_WORK_DIR)
-	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . hefeng-weather air-quality --location "$(LOCATION)" $(VERBOSE)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . hefeng-weather air-quality --location "$(LOCATION)" $(MINIFY)
 
 #####################
 

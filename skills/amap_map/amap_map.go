@@ -143,9 +143,12 @@ func (s *AmapMapSkill) createWeatherCmd() *cobra.Command {
 		},
 	}
 
+	// 定义 flags
 	cmd.Flags().StringVar(&city, "city", "", "城市名称或者adcode")
 	cmd.Flags().BoolVar(&minify, "minify", false, "紧凑输出")
-	_ = cmd.MarkFlagRequired("adcode")
+
+	// 标记必填参数
+	_ = cmd.MarkFlagRequired("city")
 
 	return cmd
 }
@@ -184,8 +187,11 @@ func (s *AmapMapSkill) createIpLocationCmd() *cobra.Command {
 		},
 	}
 
+	// 定义 flags
 	cmd.Flags().StringVar(&ip, "ip", "", "IP地址")
 	cmd.Flags().BoolVar(&minify, "minify", false, "紧凑输出")
+
+	// 标记必填参数
 	_ = cmd.MarkFlagRequired("ip")
 
 	return cmd

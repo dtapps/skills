@@ -97,7 +97,7 @@ func (s *HefengWeatherSkill) requireAPIKey(cmd *cobra.Command) (string, bool) {
 func (s *HefengWeatherSkill) createCurrentCmd() *cobra.Command {
 	var (
 		location string
-		verbose  bool
+		minify   bool
 	)
 
 	cmd := &cobra.Command{
@@ -115,22 +115,22 @@ func (s *HefengWeatherSkill) createCurrentCmd() *cobra.Command {
 				return
 			}
 
-			if verbose {
-				output, _ := json.MarshalIndent(resp, "", "  ")
-				cmd.Println(string(output))
+			if minify {
+				// 紧凑输出
+				cmd.Println(string(resp))
 			} else {
-				output, err := json.MarshalIndent(resp.Now, "", "  ")
-				if err != nil {
-					cmd.Printf("格式化结果失败: %v\n", err)
-					return
-				}
+				// 美化输出
+				output, _ := json.MarshalIndent(resp, "", "  ")
 				cmd.Println(string(output))
 			}
 		},
 	}
 
-	cmd.Flags().StringVarP(&location, "location", "l", "", "位置（经度,纬度 或 地区ID，如：116.41,39.92 或 101010100）")
-	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "输出完整结果")
+	// 定义 flags
+	cmd.Flags().StringVar(&location, "location", "", "位置（经度,纬度 或 地区ID，如：116.41,39.92 或 101010100）")
+	cmd.Flags().BoolVar(&minify, "minify", false, "紧凑输出")
+
+	// 标记必填参数
 	_ = cmd.MarkFlagRequired("location")
 
 	return cmd
@@ -141,7 +141,7 @@ func (s *HefengWeatherSkill) createForecastCmd() *cobra.Command {
 	var (
 		location string
 		days     string
-		verbose  bool
+		minify   bool
 	)
 
 	cmd := &cobra.Command{
@@ -159,23 +159,23 @@ func (s *HefengWeatherSkill) createForecastCmd() *cobra.Command {
 				return
 			}
 
-			if verbose {
-				output, _ := json.MarshalIndent(resp, "", "  ")
-				cmd.Println(string(output))
+			if minify {
+				// 紧凑输出
+				cmd.Println(string(resp))
 			} else {
-				output, err := json.MarshalIndent(resp.Daily, "", "  ")
-				if err != nil {
-					cmd.Println(resp.Daily[0].FxDate)
-					return
-				}
+				// 美化输出
+				output, _ := json.MarshalIndent(resp, "", "  ")
 				cmd.Println(string(output))
 			}
 		},
 	}
 
-	cmd.Flags().StringVarP(&location, "location", "l", "", "位置（经度,纬度 或 地区ID，如：116.41,39.92 或 101010100）")
-	cmd.Flags().StringVarP(&days, "days", "d", "3d", "预报天数: 3d, 7d, 10d, 15d, 30d")
-	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "输出完整结果")
+	// 定义 flags
+	cmd.Flags().StringVar(&location, "location", "", "位置（经度,纬度 或 地区ID，如：116.41,39.92 或 101010100）")
+	cmd.Flags().StringVar(&days, "days", "3d", "预报天数: 3d, 7d, 10d, 15d, 30d")
+	cmd.Flags().BoolVar(&minify, "minify", false, "紧凑输出")
+
+	// 标记必填参数
 	_ = cmd.MarkFlagRequired("location")
 
 	return cmd
@@ -185,7 +185,7 @@ func (s *HefengWeatherSkill) createForecastCmd() *cobra.Command {
 func (s *HefengWeatherSkill) createAirQualityCmd() *cobra.Command {
 	var (
 		location string
-		verbose  bool
+		minify   bool
 	)
 
 	cmd := &cobra.Command{
@@ -203,22 +203,22 @@ func (s *HefengWeatherSkill) createAirQualityCmd() *cobra.Command {
 				return
 			}
 
-			if verbose {
-				output, _ := json.MarshalIndent(resp, "", "  ")
-				cmd.Println(string(output))
+			if minify {
+				// 紧凑输出
+				cmd.Println(string(resp))
 			} else {
-				output, err := json.MarshalIndent(resp.Now, "  ", "  ")
-				if err != nil {
-					cmd.Printf("格式化结果失败: %v\n", err)
-					return
-				}
+				// 美化输出
+				output, _ := json.MarshalIndent(resp, "", "  ")
 				cmd.Println(string(output))
 			}
 		},
 	}
 
-	cmd.Flags().StringVarP(&location, "location", "l", "", "位置（经度,纬度 或 地区ID，如：116.41,39.92 或 101010100）")
-	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "输出完整结果")
+	// 定义 flags
+	cmd.Flags().StringVar(&location, "location", "", "位置（经度,纬度 或 地区ID，如：116.41,39.92 或 101010100）")
+	cmd.Flags().BoolVar(&minify, "minify", false, "紧凑输出")
+
+	// 标记必填参数
 	_ = cmd.MarkFlagRequired("location")
 
 	return cmd
