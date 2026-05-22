@@ -1,7 +1,6 @@
 package baidu_search
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 
@@ -74,7 +73,7 @@ type CommandOutputField struct {
 // GetCommandOutputFields 获取所有命令的输出字段映射
 func GetCommandOutputFields() []CommandOutputField {
 	return []CommandOutputField{
-		{CommandName: CmdSearch, FieldType: SearchSimpleResult{}},
+		{CommandName: CmdSearch, FieldType: nil},
 	}
 }
 
@@ -95,15 +94,13 @@ func (s *BaiduSearchSkill) createSearchCmd() *cobra.Command {
 		query     string
 		count     int
 		freshness string
-		verbose   bool
+		minify    bool
 	)
 
 	cmd := &cobra.Command{
 		Use:   CmdSearch,
 		Short: "执行百度搜索",
 		Run: func(cmd *cobra.Command, args []string) {
-			// cmd.Printf("正在搜索: %s\n", query)
-
 			// 检查并获取 API Key
 			if _, ok := s.requireAPIKey(cmd); !ok {
 				return
@@ -122,42 +119,23 @@ func (s *BaiduSearchSkill) createSearchCmd() *cobra.Command {
 				return
 			}
 
-			// 输出结果
-			if verbose {
-				// 输出完整结果（格式化后的 References）
-				var buf bytes.Buffer
-				if err := json.Indent(&buf, resp.References, "", "  "); err != nil {
-					cmd.Println(string(resp.References))
-				} else {
-					cmd.Println(buf.String())
-				}
+			if minify {
+				// 紧凑输出
+				output, _ := json.Marshal(resp)
+				cmd.Println(string(output))
 			} else {
-				// 输出简洁结果（使用结构体解析）
-				if len(resp.References) > 0 {
-					var simpleResults []SearchSimpleResult
-					if err := json.Unmarshal(resp.References, &simpleResults); err != nil {
-						// 如果解析失败，直接输出原始数据
-						cmd.Println(string(resp.References))
-					} else {
-						output, err := json.MarshalIndent(simpleResults, "", "  ")
-						if err != nil {
-							cmd.Println(string(resp.References))
-						} else {
-							cmd.Println(string(output))
-						}
-					}
-				} else {
-					cmd.Println("[]")
-				}
+				// 美化输出
+				output, _ := json.MarshalIndent(resp, "", "  ")
+				cmd.Println(string(output))
 			}
 		},
 	}
 
 	// 定义 flags
-	cmd.Flags().StringVarP(&query, "query", "q", "", "搜索关键词")
-	cmd.Flags().IntVarP(&count, "count", "c", 10, "返回结果数量")
-	cmd.Flags().StringVarP(&freshness, "freshness", "f", "", "时间筛选（如：day, week, month）")
-	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "输出完整结果")
+	cmd.Flags().StringVar(&query, "query", "", "搜索关键词")
+	cmd.Flags().IntVar(&count, "count", 10, "返回结果数量")
+	cmd.Flags().StringVar(&freshness, "freshness", "", "时间筛选（如：day, week, month）")
+	cmd.Flags().BoolVar(&minify, "minify", false, "紧凑输出")
 
 	// 标记必填参数
 	_ = cmd.MarkFlagRequired("query")

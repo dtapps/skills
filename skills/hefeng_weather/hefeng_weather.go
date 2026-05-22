@@ -59,9 +59,9 @@ type CommandOutputField struct {
 // GetCommandOutputFields 获取所有命令的输出字段映射
 func GetCommandOutputFields() []CommandOutputField {
 	return []CommandOutputField{
-		{CommandName: CmdCurrent, FieldType: CurrentWeatherSimpleResult{}},
-		{CommandName: CmdForecast, FieldType: DailyForecastSimpleItem{}},
-		{CommandName: CmdAirQuality, FieldType: AirQualitySimpleResult{}},
+		{CommandName: CmdCurrent, FieldType: nil},
+		{CommandName: CmdForecast, FieldType: nil},
+		{CommandName: CmdAirQuality, FieldType: nil},
 	}
 }
 
@@ -149,6 +149,7 @@ func (s *HefengWeatherSkill) createForecastCmd() *cobra.Command {
 		Short: "获取每日天气预报",
 		Long:  "获取指定位置的每日天气预报，支持 3d(3天)、7d(7天)、10d(10天)、15d(15天)、30d(30天)",
 		Run: func(cmd *cobra.Command, args []string) {
+			// 检查并获取 API Key
 			if _, ok := s.requireAPIKey(cmd); !ok {
 				return
 			}
@@ -193,6 +194,7 @@ func (s *HefengWeatherSkill) createAirQualityCmd() *cobra.Command {
 		Short: "获取实时空气质量",
 		Long:  "获取指定位置的实时空气质量，包含 AQI 指数、PM2.5、PM10、CO、NO2、SO2、O3 等",
 		Run: func(cmd *cobra.Command, args []string) {
+			// 检查并获取 API Key
 			if _, ok := s.requireAPIKey(cmd); !ok {
 				return
 			}

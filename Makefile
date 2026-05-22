@@ -74,131 +74,130 @@ stats-path:
 
 # 获取 百度搜索
 # make baidu-search QUERY="人工智能" COUNT=10
-# make baidu-search QUERY="人工智能" COUNT=10 VERBOSE="-v"
+# make baidu-search QUERY="人工智能" COUNT=10 MINIFY="--minify"
 .PHONY: baidu-search
 baidu-search:
 	@echo "[获取] 百度搜索..."
 	@mkdir -p $(DTSKILLS_WORK_DIR)
-	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . baidu-search search --query "$(QUERY)" --count $(COUNT) $(VERBOSE)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . baidu-search search --query "$(QUERY)" --count $(COUNT) $(MINIFY)
 
 #####################
 
 # 获取 百度百科
 # make baidu-baike KEYWORD="北京"
-# make baidu-baike KEYWORD="北京" VERBOSE="-v"
+# make baidu-baike KEYWORD="北京" MINIFY="--minify"
 .PHONY: baidu-baike
 baidu-baike:
 	@echo "[获取] 百度百科..."
 	@mkdir -p $(DTSKILLS_WORK_DIR)
-	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . baidu-baike search --key "$(KEYWORD)" $(VERBOSE)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . baidu-baike search --key "$(KEYWORD)" $(MINIFY)
 
 #####################
 
 # 获取 腾讯新闻（搜索）
 # make tencent-news-search QUERY="人工智能"
-# make tencent-news-search QUERY="人工智能" VERBOSE="-v"
+# make tencent-news-search QUERY="人工智能" MINIFY="--minify"
 .PHONY: tencent-news-search
 tencent-news-search:
 	@echo "[获取] 腾讯新闻（搜索）..."
 	@mkdir -p $(DTSKILLS_WORK_DIR)
-	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . tencent-news search --query "$(QUERY)" $(VERBOSE)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . tencent-news search --query "$(QUERY)" $(MINIFY)
 
 # 获取 腾讯新闻（热点）
 # make tencent-news-hot
-# make tencent-news-hot VERBOSE="-v"
+# make tencent-news-hot MINIFY="--minify"
 .PHONY: tencent-news-hot
 tencent-news-hot:
 	@echo "[获取] 腾讯新闻（热点）..."
 	@mkdir -p $(DTSKILLS_WORK_DIR)
-	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . tencent-news hot $(VERBOSE)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . tencent-news hot $(MINIFY)
 
 # 获取 腾讯新闻（早报）
 # make tencent-news-morning
-# make tencent-news-morning VERBOSE="-v"
+# make tencent-news-morning MINIFY="--minify"
 .PHONY: tencent-news-morning
 tencent-news-morning:
 	@echo "[获取] 腾讯新闻（早报）..."
 	@mkdir -p $(DTSKILLS_WORK_DIR)
-	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . tencent-news morning $(VERBOSE)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . tencent-news morning $(MINIFY)
 
 # 获取 腾讯新闻（晚报）
 # make tencent-news-evening
-# make tencent-news-evening VERBOSE="-v"
+# make tencent-news-evening MINIFY="--minify"
 .PHONY: tencent-news-evening
 tencent-news-evening:
 	@echo "[获取] 腾讯新闻（晚报）..."
 	@mkdir -p $(DTSKILLS_WORK_DIR)
-	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . tencent-news evening $(VERBOSE)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . tencent-news evening $(MINIFY)
 
 #####################
 
 # 获取 腾讯天气（当前）
 # make tencent-weather-current ADCODE=110000
-# make tencent-weather-current ADCODE=110000 VERBOSE="-v"
+# make tencent-weather-current ADCODE=110000 MINIFY="--minify"
 .PHONY: tencent-weather-current
 tencent-weather-current:
 	@echo "[获取] 腾讯天气（当前）..."
 	@mkdir -p $(DTSKILLS_WORK_DIR)
-	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . tencent-weather current --adcode "$(ADCODE)" $(VERBOSE)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . tencent-weather current --adcode "$(ADCODE)" $(MINIFY)
 
 # 获取 腾讯天气（预报）
 # make tencent-weather-forecast ADCODE=110000 TYPE=forecast_24h
-# make tencent-weather-forecast ADCODE=110000 TYPE=forecast_24h VERBOSE="-v"
+# make tencent-weather-forecast ADCODE=110000 TYPE=forecast_24h MINIFY="--minify"
 .PHONY: tencent-weather-forecast
 tencent-weather-forecast:
 	@echo "[获取] 腾讯天气（预报）..."
 	@mkdir -p $(DTSKILLS_WORK_DIR)
-	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . tencent-weather forecast --adcode "$(ADCODE)" --type "$(TYPE)" $(VERBOSE)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . tencent-weather forecast --adcode "$(ADCODE)" --type "$(TYPE)" $(MINIFY)
 
 # 获取 腾讯天气（空气质量）
 # make tencent-weather-air-quality ADCODE=110000 
-# make tencent-weather-air-quality ADCODE=110000 VERBOSE="-v"
+# make tencent-weather-air-quality ADCODE=110000 MINIFY="--minify"
 .PHONY: tencent-weather-airquality
 tencent-weather-air-quality:
 	@echo "[获取] 腾讯天气（空气质量）..."
 	@mkdir -p $(DTSKILLS_WORK_DIR)
-	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . tencent-weather air-quality --adcode "$(ADCODE)" $(VERBOSE)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . tencent-weather air-quality --adcode "$(ADCODE)" $(MINIFY)
 
 # 获取 腾讯天气（IP定位获取城市）
 # make tencent-weather-ip2city
+# make tencent-weather-ip2city MINIFY="--minify"
 .PHONY: tencent-weather-ip2city
 tencent-weather-ip2city:
 	@echo "[获取] 腾讯天气（IP定位获取城市）..."
 	@mkdir -p $(DTSKILLS_WORK_DIR)
-	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . tencent-weather ip2city
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . tencent-weather ip2city $(MINIFY)
 
 #####################
 
 # 腾讯较真事实查证
 # make jiaozhen-factcheck-check QUERY="喝柠檬水能抗癌是真的吗"
-# make jiaozhen-factcheck-check QUERY="喝柠檬水能抗癌是真的吗" VERBOSE="-v"
+# make jiaozhen-factcheck-check QUERY="喝柠檬水能抗癌是真的吗" MINIFY="--minify"
 .PHONY: jiaozhen-factcheck-check
 jiaozhen-factcheck-check:
 	@echo "[查证] 腾讯较真事实查证..."
 	@mkdir -p $(DTSKILLS_WORK_DIR)
-	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . jiaozhen-factcheck check --query "$(QUERY)" $(VERBOSE)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . jiaozhen-factcheck check --query "$(QUERY)" $(MINIFY)
 
 #####################
 
 # 微博搜索 获取微博热搜榜
 # make weibo-search-hot-search CATEGORY="主榜"
-# make weibo-search-hot-search CATEGORY="文娱榜"
-# make weibo-search-hot-search CATEGORY="社会榜"
-# make weibo-search-hot-search CATEGORY="主榜" VERBOSE="-v"
+# make weibo-search-hot-search CATEGORY="主榜" MINIFY="--minify"
 .PHONY: weibo-search-hot-search
 weibo-search-hot-search:
 	@echo "[微博搜索] 获取微博热搜榜..."
 	@mkdir -p $(DTSKILLS_WORK_DIR)
-	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . weibo-search hot-search --category "$(CATEGORY)" $(VERBOSE)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . weibo-search hot-search --category "$(CATEGORY)" $(MINIFY)
 
 # 微博搜索 执行微博智搜
 # make weibo-search-smart-search QUERY="小米"
-# make weibo-search-smart-search QUERY="小米" VERBOSE="-v"
+# make weibo-search-smart-search QUERY="小米" MINIFY="--minify"
 .PHONY: weibo-search-smart-search
 weibo-search-smart-search:
 	@echo "[微博搜索] 执行微博智搜..."
 	@mkdir -p $(DTSKILLS_WORK_DIR)
-	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . weibo-search smart-search --query "$(QUERY)" $(VERBOSE)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . weibo-search smart-search --query "$(QUERY)" $(MINIFY)
 
 #####################
 

@@ -1,14 +1,12 @@
 package tencent_news
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 
 	"github.com/dtapp/skills/config"
 	"github.com/dtapp/skills/skills"
 	"github.com/dtapp/skills/types"
-	"github.com/tidwall/gjson"
 
 	"github.com/spf13/cobra"
 )
@@ -63,10 +61,10 @@ type CommandOutputField struct {
 // GetCommandOutputFields 获取所有命令的输出字段映射
 func GetCommandOutputFields() []CommandOutputField {
 	return []CommandOutputField{
-		{CommandName: CmdSearch, FieldType: NewsSimpleItem{}},
-		{CommandName: CmdHot, FieldType: NewsSimpleItem{}},
-		{CommandName: CmdMorning, FieldType: NewsSimpleItem{}},
-		{CommandName: CmdEvening, FieldType: NewsSimpleItem{}},
+		{CommandName: CmdSearch, FieldType: nil},
+		{CommandName: CmdHot, FieldType: nil},
+		{CommandName: CmdMorning, FieldType: nil},
+		{CommandName: CmdEvening, FieldType: nil},
 	}
 }
 
@@ -102,18 +100,16 @@ func (s *TencentNewsSkill) requireAPIKey(cmd *cobra.Command) (string, bool) {
 // createSearchCmd 创建搜索子命令
 func (s *TencentNewsSkill) createSearchCmd() *cobra.Command {
 	var (
-		query   string
-		count   int
-		page    int
-		verbose bool
+		query  string
+		count  int
+		page   int
+		minify bool
 	)
 
 	cmd := &cobra.Command{
 		Use:   CmdSearch,
 		Short: "搜索新闻",
 		Run: func(cmd *cobra.Command, args []string) {
-			// cmd.Printf("正在搜索新闻: %s\n", query)
-
 			// 检查并获取 API Key
 			if _, ok := s.requireAPIKey(cmd); !ok {
 				return
@@ -125,37 +121,23 @@ func (s *TencentNewsSkill) createSearchCmd() *cobra.Command {
 				return
 			}
 
-			// 输出结果
-			if verbose {
-				// 输出完整结果（格式化后的 NewsList）
-				var buf bytes.Buffer
-				if err := json.Indent(&buf, resp.NewsList, "", "  "); err != nil {
-					cmd.Println(string(resp.NewsList))
-				} else {
-					cmd.Println(buf.String())
-				}
+			if minify {
+				// 紧凑输出
+				output, _ := json.Marshal(resp)
+				cmd.Println(string(output))
 			} else {
-				// 输出简洁结果
-				simpleResults := make([]NewsSimpleItem, 0)
-				if err := json.Unmarshal([]byte(resp.NewsList), &simpleResults); err != nil {
-					cmd.Println(string(resp.NewsList))
-				} else {
-					output, err := json.MarshalIndent(simpleResults, "", "  ")
-					if err != nil {
-						cmd.Println(string(resp.NewsList))
-					} else {
-						cmd.Println(string(output))
-					}
-				}
+				// 美化输出
+				output, _ := json.MarshalIndent(resp, "", "  ")
+				cmd.Println(string(output))
 			}
 		},
 	}
 
 	// 定义 flags
-	cmd.Flags().StringVarP(&query, "query", "q", "", "搜索关键词")
-	cmd.Flags().IntVarP(&count, "count", "c", 10, "返回结果数量")
-	cmd.Flags().IntVarP(&page, "page", "p", 1, "页码")
-	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "输出完整结果")
+	cmd.Flags().StringVar(&query, "query", "", "搜索关键词")
+	cmd.Flags().IntVar(&count, "count", 10, "返回结果数量")
+	cmd.Flags().IntVar(&page, "page", 1, "页码")
+	cmd.Flags().BoolVar(&minify, "minify", false, "紧凑输出")
 
 	// 标记必填参数
 	_ = cmd.MarkFlagRequired("query")
@@ -166,16 +148,14 @@ func (s *TencentNewsSkill) createSearchCmd() *cobra.Command {
 // createHotCmd 创建热点新闻子命令
 func (s *TencentNewsSkill) createHotCmd() *cobra.Command {
 	var (
-		count   int
-		verbose bool
+		count  int
+		minify bool
 	)
 
 	cmd := &cobra.Command{
 		Use:   CmdHot,
 		Short: "获取热点新闻",
 		Run: func(cmd *cobra.Command, args []string) {
-			// cmd.Println("正在获取热点新闻...")
-
 			// 检查并获取 API Key
 			if _, ok := s.requireAPIKey(cmd); !ok {
 				return
@@ -187,49 +167,33 @@ func (s *TencentNewsSkill) createHotCmd() *cobra.Command {
 				return
 			}
 
-			// 输出结果
-			if verbose {
-				// 输出完整结果（格式化后的 NewsList）
-				var buf bytes.Buffer
-				if err := json.Indent(&buf, resp.NewsList, "", "  "); err != nil {
-					cmd.Println(string(resp.NewsList))
-				} else {
-					cmd.Println(buf.String())
-				}
+			if minify {
+				// 紧凑输出
+				output, _ := json.Marshal(resp)
+				cmd.Println(string(output))
 			} else {
-				// 输出简洁结果
-				simpleResults := make([]NewsSimpleItem, 0)
-				if err := json.Unmarshal([]byte(resp.NewsList), &simpleResults); err != nil {
-					cmd.Println(string(resp.NewsList))
-				} else {
-					output, err := json.MarshalIndent(simpleResults, "", "  ")
-					if err != nil {
-						cmd.Println(string(resp.NewsList))
-					} else {
-						cmd.Println(string(output))
-					}
-				}
+				// 美化输出
+				output, _ := json.MarshalIndent(resp, "", "  ")
+				cmd.Println(string(output))
 			}
 		},
 	}
 
 	// 定义 flags
-	cmd.Flags().IntVarP(&count, "count", "c", 10, "返回结果数量")
-	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "输出完整结果")
+	cmd.Flags().IntVar(&count, "count", 10, "返回结果数量")
+	cmd.Flags().BoolVar(&minify, "minify", false, "紧凑输出")
 
 	return cmd
 }
 
 // createMorningCmd 创建新闻早报子命令
 func (s *TencentNewsSkill) createMorningCmd() *cobra.Command {
-	var verbose bool
+	var minify bool
 
 	cmd := &cobra.Command{
 		Use:   CmdMorning,
 		Short: "获取新闻早报",
 		Run: func(cmd *cobra.Command, args []string) {
-			// cmd.Println("正在获取新闻早报...")
-
 			// 检查并获取 API Key
 			if _, ok := s.requireAPIKey(cmd); !ok {
 				return
@@ -241,49 +205,32 @@ func (s *TencentNewsSkill) createMorningCmd() *cobra.Command {
 				return
 			}
 
-			// 输出结果
-			if verbose {
-				// 输出完整结果（格式化后的 Data）
-				var buf bytes.Buffer
-				if err := json.Indent(&buf, resp.Data, "", "  "); err != nil {
-					cmd.Println(string(resp.Data))
-				} else {
-					cmd.Println(buf.String())
-				}
+			if minify {
+				// 紧凑输出
+				output, _ := json.Marshal(resp)
+				cmd.Println(string(output))
 			} else {
-				// 输出简洁结果
-				simpleResults := make([]NewsSimpleItem, 0)
-				observe := gjson.GetBytes(resp.Data, "data.news_list").String()
-				if err := json.Unmarshal([]byte(observe), &simpleResults); err != nil {
-					cmd.Println(observe)
-				} else {
-					output, err := json.MarshalIndent(simpleResults, "", "  ")
-					if err != nil {
-						cmd.Println(observe)
-					} else {
-						cmd.Println(string(output))
-					}
-				}
+				// 美化输出
+				output, _ := json.MarshalIndent(resp, "", "  ")
+				cmd.Println(string(output))
 			}
 		},
 	}
 
 	// 定义 flags
-	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "输出完整结果")
+	cmd.Flags().BoolVar(&minify, "minify", false, "紧凑输出")
 
 	return cmd
 }
 
 // createEveningCmd 创建新闻晚报子命令
 func (s *TencentNewsSkill) createEveningCmd() *cobra.Command {
-	var verbose bool
+	var minify bool
 
 	cmd := &cobra.Command{
 		Use:   CmdEvening,
 		Short: "获取新闻晚报",
 		Run: func(cmd *cobra.Command, args []string) {
-			// cmd.Println("正在获取新闻晚报...")
-
 			// 检查并获取 API Key
 			if _, ok := s.requireAPIKey(cmd); !ok {
 				return
@@ -295,35 +242,20 @@ func (s *TencentNewsSkill) createEveningCmd() *cobra.Command {
 				return
 			}
 
-			// 输出结果
-			if verbose {
-				// 输出完整结果（格式化后的 Data）
-				var buf bytes.Buffer
-				if err := json.Indent(&buf, resp.Data, "", "  "); err != nil {
-					cmd.Println(string(resp.Data))
-				} else {
-					cmd.Println(buf.String())
-				}
+			if minify {
+				// 紧凑输出
+				output, _ := json.Marshal(resp)
+				cmd.Println(string(output))
 			} else {
-				// 输出简洁结果
-				simpleResults := make([]NewsSimpleItem, 0)
-				observe := gjson.GetBytes(resp.Data, "data.news_list").String()
-				if err := json.Unmarshal([]byte(observe), &simpleResults); err != nil {
-					cmd.Println(observe)
-				} else {
-					output, err := json.MarshalIndent(simpleResults, "", "  ")
-					if err != nil {
-						cmd.Println(observe)
-					} else {
-						cmd.Println(string(output))
-					}
-				}
+				// 美化输出
+				output, _ := json.MarshalIndent(resp, "", "  ")
+				cmd.Println(string(output))
 			}
 		},
 	}
 
 	// 定义 flags
-	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "输出完整结果")
+	cmd.Flags().BoolVar(&minify, "minify", false, "紧凑输出")
 
 	return cmd
 }

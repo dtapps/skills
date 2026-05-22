@@ -256,6 +256,7 @@ var weiboExternalTokenManager *TokenManager
 var weiboExternalTokenOnce sync.Once
 
 // getWeiboExternalTokenManager 获取微博外部 Token 管理器
+// 如果没有配置 token_dir，返回 nil
 func getWeiboExternalTokenManager() *TokenManager {
 	weiboExternalTokenOnce.Do(func() {
 		// 优先从配置读取 token_dir，如果不存在则使用环境变量
@@ -404,7 +405,7 @@ func GetTencentMapAPIKeys() []string {
 func GetWeiboAPITokenRandom() string {
 	// 首先尝试从外部目录加载
 	tm := getWeiboExternalTokenManager()
-	if tm.IsLoaded() {
+	if tm != nil && tm.IsLoaded() {
 		if token, err := tm.GetRandom(); err == nil && token != nil {
 			return token.Token
 		}

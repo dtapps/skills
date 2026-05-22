@@ -77,7 +77,7 @@ type CommandOutputField struct {
 // GetCommandOutputFields 获取所有命令的输出字段映射
 func GetCommandOutputFields() []CommandOutputField {
 	return []CommandOutputField{
-		{CommandName: CmdWeather, FieldType: WeatherSimpleResult{}},
+		{CommandName: CmdWeather, FieldType: nil},
 		{CommandName: CmdIpLocation, FieldType: nil},
 	}
 }
@@ -121,6 +121,7 @@ func (s *AmapMapSkill) createWeatherCmd() *cobra.Command {
 		Short: "获取天气信息",
 		Long:  "获取指定位置的实时天气状况",
 		Run: func(cmd *cobra.Command, args []string) {
+			// 检查并获取 API Key
 			if _, ok := s.requireAPIKey(cmd); !ok {
 				return
 			}
@@ -165,6 +166,7 @@ func (s *AmapMapSkill) createIpLocationCmd() *cobra.Command {
 		Short: "获取IP定位信息",
 		Long:  "获取指定IP的定位信息",
 		Run: func(cmd *cobra.Command, args []string) {
+			// 检查并获取 API Key
 			if _, ok := s.requireAPIKey(cmd); !ok {
 				return
 			}

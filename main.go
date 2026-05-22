@@ -112,7 +112,7 @@ func runGenerate(cmd *cobra.Command, args []string) {
 	p.Printf("输出目录: %s\n", outputDir)
 	p.Printf("PicoClaw 模式: %s\n", map[bool]string{true: "是", false: "否"}[isPicoclaw])
 
-	if !ui.RunConfirm("确认生成？", false) {
+	if !ui.RunConfirm("确认生成？", true) {
 		cmd.Println("已取消生成")
 		return
 	}

@@ -1,14 +1,12 @@
 package tencent_weather
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 
 	"github.com/dtapp/skills/config"
 	"github.com/dtapp/skills/skills"
 	"github.com/dtapp/skills/types"
-	"github.com/tidwall/gjson"
 
 	"github.com/spf13/cobra"
 )
@@ -63,10 +61,10 @@ type CommandOutputField struct {
 // GetCommandOutputFields 获取所有命令的输出字段映射
 func GetCommandOutputFields() []CommandOutputField {
 	return []CommandOutputField{
-		{CommandName: CmdCurrent, FieldType: CurrentWeatherSimpleResult{}},
-		{CommandName: CmdForecast, FieldType: ForecastWeatherSimpleItem{}},
-		{CommandName: CmdAirQuality, FieldType: AirQualitySimpleItem{}},
-		{CommandName: CmdIP2City, FieldType: IP2CitySimpleResult{}},
+		{CommandName: CmdCurrent, FieldType: nil},
+		{CommandName: CmdForecast, FieldType: nil},
+		{CommandName: CmdAirQuality, FieldType: nil},
+		{CommandName: CmdIP2City, FieldType: nil},
 	}
 }
 
@@ -102,8 +100,8 @@ func (s *TencentWeatherSkill) requireAPIKey(cmd *cobra.Command) (string, bool) {
 // createCurrentCmd 创建实时天气子命令
 func (s *TencentWeatherSkill) createCurrentCmd() *cobra.Command {
 	var (
-		adcode  string
-		verbose bool
+		adcode string
+		minify bool
 	)
 
 	cmd := &cobra.Command{
@@ -115,48 +113,27 @@ func (s *TencentWeatherSkill) createCurrentCmd() *cobra.Command {
 				return
 			}
 
-			// if adcode == "" {
-			// 	cmd.Println("正在获取当前地区天气...")
-			// } else {
-			// 	cmd.Printf("正在获取地区 %s 的天气...\n", adcode)
-			// }
-
 			resp, err := GetCurrentWeather(adcode, s.GetInfo().Name)
 			if err != nil {
 				cmd.Printf("获取天气失败: %v\n", err)
 				return
 			}
 
-			// 输出结果
-			if verbose {
-				// 输出完整结果（格式化后的 Data）
-				var buf bytes.Buffer
-				if err := json.Indent(&buf, resp.Data, "", "  "); err != nil {
-					cmd.Println(string(resp.Data))
-				} else {
-					cmd.Println(buf.String())
-				}
+			if minify {
+				// 紧凑输出
+				output, _ := json.Marshal(resp)
+				cmd.Println(string(output))
 			} else {
-				// 输出简洁结果
-				var simpleResult CurrentWeatherSimpleResult
-				observe := gjson.GetBytes(resp.Data, "observe").String()
-				if err := json.Unmarshal([]byte(observe), &simpleResult); err != nil {
-					cmd.Println(observe)
-				} else {
-					output, err := json.MarshalIndent(simpleResult, "", "  ")
-					if err != nil {
-						cmd.Println(observe)
-					} else {
-						cmd.Println(string(output))
-					}
-				}
+				// 美化输出
+				output, _ := json.MarshalIndent(resp, "", "  ")
+				cmd.Println(string(output))
 			}
 		},
 	}
 
 	// 定义 flags
-	cmd.Flags().StringVarP(&adcode, "adcode", "a", "", "地区编码（如北京：110000）")
-	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "输出完整结果")
+	cmd.Flags().StringVar(&adcode, "adcode", "", "地区编码（如北京：110000）")
+	cmd.Flags().BoolVar(&minify, "minify", false, "紧凑输出")
 
 	// 标记必填参数
 	_ = cmd.MarkFlagRequired("adcode")
@@ -169,7 +146,7 @@ func (s *TencentWeatherSkill) createForecastCmd() *cobra.Command {
 	var (
 		adcode      string
 		weatherType string
-		verbose     bool
+		minify      bool
 	)
 
 	cmd := &cobra.Command{
@@ -182,57 +159,28 @@ func (s *TencentWeatherSkill) createForecastCmd() *cobra.Command {
 				return
 			}
 
-			// if adcode == "" {
-			// 	cmd.Println("正在获取当前地区天气预报...")
-			// } else {
-			// 	cmd.Printf("正在获取地区 %s 的 %s 预报...\n", adcode, weatherType)
-			// }
-
 			resp, err := GetForecastWeather(adcode, weatherType, s.GetInfo().Name)
 			if err != nil {
 				cmd.Printf("获取天气预报失败: %v\n", err)
 				return
 			}
 
-			// 输出结果
-			if verbose {
-				// 输出完整结果（格式化后的 Data）
-				var buf bytes.Buffer
-				if err := json.Indent(&buf, resp.Data, "", "  "); err != nil {
-					cmd.Println(string(resp.Data))
-				} else {
-					cmd.Println(buf.String())
-				}
+			if minify {
+				// 紧凑输出
+				output, _ := json.Marshal(resp)
+				cmd.Println(string(output))
 			} else {
-				// 输出简洁结果
-				simpleResults := make([]ForecastWeatherSimpleItem, 0)
-
-				// 根据预报类型选择数据源
-				var forecast string
-				if weatherType == "forecast_1h" {
-					forecast = gjson.GetBytes(resp.Data, "forecast_1h").String()
-				} else {
-					forecast = gjson.GetBytes(resp.Data, "forecast_24h").String()
-				}
-
-				if err := json.Unmarshal([]byte(forecast), &simpleResults); err != nil {
-					cmd.Println(forecast)
-				} else {
-					output, err := json.MarshalIndent(simpleResults, "", "  ")
-					if err != nil {
-						cmd.Println(forecast)
-					} else {
-						cmd.Println(string(output))
-					}
-				}
+				// 美化输出
+				output, _ := json.MarshalIndent(resp, "", "  ")
+				cmd.Println(string(output))
 			}
 		},
 	}
 
 	// 定义 flags
-	cmd.Flags().StringVarP(&adcode, "adcode", "a", "", "地区编码（如北京：110000）")
-	cmd.Flags().StringVarP(&weatherType, "type", "t", "forecast_24h", "预报类型: forecast_1h 或 forecast_24h")
-	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "输出完整结果")
+	cmd.Flags().StringVar(&adcode, "adcode", "", "地区编码（如北京：110000）")
+	cmd.Flags().StringVar(&weatherType, "type", "forecast_24h", "预报类型: forecast_1h 或 forecast_24h")
+	cmd.Flags().BoolVar(&minify, "minify", false, "紧凑输出")
 
 	// 标记必填参数
 	_ = cmd.MarkFlagRequired("adcode")
@@ -243,8 +191,8 @@ func (s *TencentWeatherSkill) createForecastCmd() *cobra.Command {
 // createAirQualityCmd 创建天气空气质量子命令
 func (s *TencentWeatherSkill) createAirQualityCmd() *cobra.Command {
 	var (
-		adcode  string
-		verbose bool
+		adcode string
+		minify bool
 	)
 
 	cmd := &cobra.Command{
@@ -257,48 +205,27 @@ func (s *TencentWeatherSkill) createAirQualityCmd() *cobra.Command {
 				return
 			}
 
-			// if adcode == "" {
-			// 	cmd.Println("正在获取当前地区天气空气质量...")
-			// } else {
-			// 	cmd.Printf("正在获取地区 %s 的天气空气质量...\n", adcode)
-			// }
-
 			resp, err := GetAirQuality(adcode, s.GetInfo().Name)
 			if err != nil {
 				cmd.Printf("获取天气空气质量失败: %v\n", err)
 				return
 			}
 
-			// 输出结果
-			if verbose {
-				// 输出完整结果（格式化后的 Data）
-				var buf bytes.Buffer
-				if err := json.Indent(&buf, resp.Data, "", "  "); err != nil {
-					cmd.Println(string(resp.Data))
-				} else {
-					cmd.Println(buf.String())
-				}
+			if minify {
+				// 紧凑输出
+				output, _ := json.Marshal(resp)
+				cmd.Println(string(output))
 			} else {
-				// 输出简洁结果
-				var simpleResult AirQualitySimpleItem
-				air := gjson.GetBytes(resp.Data, "air").String()
-				if err := json.Unmarshal([]byte(air), &simpleResult); err != nil {
-					cmd.Println(air)
-				} else {
-					output, err := json.MarshalIndent(simpleResult, "", "  ")
-					if err != nil {
-						cmd.Println(air)
-					} else {
-						cmd.Println(string(output))
-					}
-				}
+				// 美化输出
+				output, _ := json.MarshalIndent(resp, "", "  ")
+				cmd.Println(string(output))
 			}
 		},
 	}
 
 	// 定义 flags
-	cmd.Flags().StringVarP(&adcode, "adcode", "a", "", "地区编码（如北京：110000）")
-	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "输出完整结果")
+	cmd.Flags().StringVar(&adcode, "adcode", "", "地区编码（如北京：110000）")
+	cmd.Flags().BoolVar(&minify, "minify", false, "紧凑输出")
 
 	// 标记必填参数
 	_ = cmd.MarkFlagRequired("adcode")
@@ -308,7 +235,11 @@ func (s *TencentWeatherSkill) createAirQualityCmd() *cobra.Command {
 
 // createIP2CityCmd 创建IP定位子命令
 func (s *TencentWeatherSkill) createIP2CityCmd() *cobra.Command {
-	return &cobra.Command{
+	var (
+		minify bool
+	)
+
+	cmd := &cobra.Command{
 		Use:   CmdIP2City,
 		Short: "IP定位获取城市",
 		Run: func(cmd *cobra.Command, args []string) {
@@ -317,32 +248,28 @@ func (s *TencentWeatherSkill) createIP2CityCmd() *cobra.Command {
 				return
 			}
 
-			// cmd.Println("正在获取IP定位信息...")
-
 			resp, err := GetIP2City(s.GetInfo().Name)
 			if err != nil {
 				cmd.Printf("获取IP定位失败: %v\n", err)
 				return
 			}
 
-			// 输出简洁结果
-			var simpleResult = IP2CitySimpleResult{
-				IP:           resp.IP,
-				Country:      resp.Country,
-				Province:     resp.Province,
-				City:         resp.City,
-				District:     resp.District,
-				DistrictCode: resp.DistrictCode,
-			}
-			output, err := json.MarshalIndent(simpleResult, "", "  ")
-			if err != nil {
-				cmd.Printf("格式化简洁结果失败: %v\n", err)
-				return
+			if minify {
+				// 紧凑输出
+				output, _ := json.Marshal(resp)
+				cmd.Println(string(output))
 			} else {
+				// 美化输出
+				output, _ := json.MarshalIndent(resp, "", "  ")
 				cmd.Println(string(output))
 			}
 		},
 	}
+
+	// 定义 flags
+	cmd.Flags().BoolVar(&minify, "minify", false, "紧凑输出")
+
+	return cmd
 }
 
 // GetSkillInfo 获取完整的 SkillInfo（包含自动提取的 Commands）

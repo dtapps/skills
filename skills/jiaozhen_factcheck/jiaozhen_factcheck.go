@@ -73,8 +73,8 @@ func (s *JiaozhenFactCheckSkill) requireAPIKey(cmd *cobra.Command) (string, bool
 // createCheckCmd 创建查证子命令
 func (s *JiaozhenFactCheckSkill) createCheckCmd() *cobra.Command {
 	var (
-		query   string
-		verbose bool
+		query  string
+		minify bool
 	)
 
 	cmd := &cobra.Command{
@@ -86,28 +86,27 @@ func (s *JiaozhenFactCheckSkill) createCheckCmd() *cobra.Command {
 				return
 			}
 
-			// cmd.Printf("正在查证: %s\n", query)
-
 			resp, err := FactCheck(query, s.GetInfo().Name)
 			if err != nil {
 				cmd.Printf("查证失败: %v\n", err)
 				return
 			}
 
-			// 输出结果
-			output, err := json.MarshalIndent(resp, "", "  ")
-			if err != nil {
-				cmd.Printf("格式化结果失败: %v\n", err)
-				return
+			if minify {
+				// 紧凑输出
+				output, _ := json.Marshal(resp)
+				cmd.Println(string(output))
+			} else {
+				// 美化输出
+				output, _ := json.MarshalIndent(resp, "", "  ")
+				cmd.Println(string(output))
 			}
-
-			cmd.Println(string(output))
 		},
 	}
 
 	// 定义 flags
-	cmd.Flags().StringVarP(&query, "query", "q", "", "需要查证的内容")
-	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "输出完整结果")
+	cmd.Flags().StringVar(&query, "query", "", "需要查证的内容")
+	cmd.Flags().BoolVar(&minify, "minify", false, "紧凑输出")
 
 	// 标记必填参数
 	_ = cmd.MarkFlagRequired("query")

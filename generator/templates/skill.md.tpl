@@ -46,7 +46,7 @@ allowed-tools: "{{.AllowedToolsStr}}"
 
 **用法：**
 ```bash
-{{.Usage}}{{- range .Flags }}{{if .Required}} -{{.Shorthand}} <{{.Name}}>{{end}}{{end}}
+{{.Usage}}{{- range .Flags }}{{if .Required}}{{if .Shorthand}} -{{.Shorthand}}{{else}} --{{.Name}}{{end}} <{{.Name}}>{{end}}{{end}}
 ```
 {{- if .Flags }}
 **参数：**
@@ -54,7 +54,7 @@ allowed-tools: "{{.AllowedToolsStr}}"
 | 参数 | 简写 | 描述 | 必填 | 默认值 |
 |------|------|------|------|--------|
 {{- range .Flags }}
-| `--{{.Name}}` | {{if .Shorthand}}`-{{.Shorthand}}`{{else}}-{{end}} | {{.Description}} | {{if .Required}}是{{else}}否{{end}} | {{if .Default}}{{.Default}}{{else}}-{{end}} |
+| `--{{.Name}}` | {{if .Shorthand}}`-{{.Shorthand}}`{{end}} | {{.Description}} | {{if .Required}}是{{else}}否{{end}} | {{if .Default}}{{.Default}}{{else}}-{{end}} |
 {{- end }}
 {{- end }}
 {{- if .OutputFields }}

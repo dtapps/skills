@@ -123,6 +123,7 @@ func (s *TencentMapSkill) createCurrentWeatherCmd() *cobra.Command {
 		Short: "获取实时天气",
 		Long:  "获取指定位置的实时天气状况",
 		Run: func(cmd *cobra.Command, args []string) {
+			// 检查并获取 API Key
 			if _, ok := s.requireAPIKey(cmd); !ok {
 				return
 			}
@@ -163,6 +164,7 @@ func (s *TencentMapSkill) createForecastWeatherCmd() *cobra.Command {
 		Short: "获取天气预报",
 		Long:  "获取指定位置的未来几天天气预报",
 		Run: func(cmd *cobra.Command, args []string) {
+			// 检查并获取 API Key
 			if _, ok := s.requireAPIKey(cmd); !ok {
 				return
 			}
@@ -202,6 +204,7 @@ func (s *TencentMapSkill) createIpLocationCmd() *cobra.Command {
 		Short: "获取IP定位",
 		Long:  "获取指定IP地址的定位信息",
 		Run: func(cmd *cobra.Command, args []string) {
+			// 检查并获取 API Key
 			if _, ok := s.requireAPIKey(cmd); !ok {
 				return
 			}

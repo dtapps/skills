@@ -1,15 +1,12 @@
 package weibo_search
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 
-	"charm.land/glamour/v2"
 	"github.com/dtapp/skills/config"
 	"github.com/dtapp/skills/skills"
 	"github.com/dtapp/skills/types"
-	"github.com/tidwall/gjson"
 
 	"github.com/spf13/cobra"
 )
@@ -77,7 +74,7 @@ type CommandOutputField struct {
 // GetCommandOutputFields 获取所有命令的输出字段映射
 func GetCommandOutputFields() []CommandOutputField {
 	return []CommandOutputField{
-		{CommandName: CmdHotSearch, FieldType: HotSearchSimpleItem{}},
+		{CommandName: CmdHotSearch, FieldType: nil},
 	}
 }
 
@@ -97,7 +94,7 @@ func (s *WeiboSearchSkill) createHotSearchCmd() *cobra.Command {
 	var (
 		category string
 		count    int
-		verbose  bool
+		minify   bool
 	)
 
 	cmd := &cobra.Command{
@@ -105,8 +102,6 @@ func (s *WeiboSearchSkill) createHotSearchCmd() *cobra.Command {
 		Short: "获取微博热搜榜",
 		Long:  "微博热搜榜工具。当用户需要查看微博热搜、获取热门话题、了解当前热点新闻时激活。",
 		Run: func(cmd *cobra.Command, args []string) {
-			// cmd.Println("正在获取微博热搜榜...")
-
 			// 检查并获取 API Token
 			if _, ok := s.requireAPIToken(cmd); !ok {
 				return
@@ -123,35 +118,22 @@ func (s *WeiboSearchSkill) createHotSearchCmd() *cobra.Command {
 				return
 			}
 
-			// 输出结果
-			if verbose {
-				var buf bytes.Buffer
-				if err := json.Indent(&buf, resp.Data, "", "  "); err != nil {
-					cmd.Println(string(resp.Data))
-				} else {
-					cmd.Println(buf.String())
-				}
+			if minify {
+				// 紧凑输出
+				output, _ := json.Marshal(resp)
+				cmd.Println(string(output))
 			} else {
-				simpleResults := make([]HotSearchSimpleItem, 0)
-				data := gjson.GetBytes(resp.Data, "data").String()
-				if err := json.Unmarshal([]byte(data), &simpleResults); err != nil {
-					cmd.Println(data)
-				} else {
-					output, err := json.MarshalIndent(simpleResults, "", "  ")
-					if err != nil {
-						cmd.Println(data)
-					} else {
-						cmd.Println(string(output))
-					}
-				}
+				// 美化输出
+				output, _ := json.MarshalIndent(resp, "", "  ")
+				cmd.Println(string(output))
 			}
 		},
 	}
 
 	// 定义 flags
-	cmd.Flags().StringVarP(&category, "category", "t", "主榜", "榜单类型（中文）：主榜、文娱榜、社会榜、生活榜、acg榜、科技榜、体育榜")
-	cmd.Flags().IntVarP(&count, "count", "c", 50, "返回结果数量")
-	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "输出完整结果")
+	cmd.Flags().StringVar(&category, "category", "主榜", "榜单类型（中文）：主榜、文娱榜、社会榜、生活榜、acg榜、科技榜、体育榜")
+	cmd.Flags().IntVar(&count, "count", 50, "返回结果数量")
+	cmd.Flags().BoolVar(&minify, "minify", false, "紧凑输出")
 
 	// 标记必填参数
 	_ = cmd.MarkFlagRequired("category")
@@ -162,8 +144,8 @@ func (s *WeiboSearchSkill) createHotSearchCmd() *cobra.Command {
 // createSmartSearchCmd 创建智搜子命令
 func (s *WeiboSearchSkill) createSmartSearchCmd() *cobra.Command {
 	var (
-		query   string
-		verbose bool
+		query  string
+		minify bool
 	)
 
 	cmd := &cobra.Command{
@@ -171,8 +153,6 @@ func (s *WeiboSearchSkill) createSmartSearchCmd() *cobra.Command {
 		Short: "执行微博智搜",
 		Long:  "微博智搜工具，通过关键词获取微博智搜内容。当用户需要搜索微博内容、查找微博话题、搜索微博用户发布的内容时激活。",
 		Run: func(cmd *cobra.Command, args []string) {
-			// cmd.Printf("正在搜索微博: %s\n", query)
-
 			// 检查并获取 API Token
 			if _, ok := s.requireAPIToken(cmd); !ok {
 				return
@@ -188,30 +168,21 @@ func (s *WeiboSearchSkill) createSmartSearchCmd() *cobra.Command {
 				return
 			}
 
-			// 输出结果
-			if verbose {
-				var buf bytes.Buffer
-				if err := json.Indent(&buf, resp.Data, "", "  "); err != nil {
-					cmd.Println(string(resp.Data))
-				} else {
-					cmd.Println(buf.String())
-				}
+			if minify {
+				// 紧凑输出
+				output, _ := json.Marshal(resp)
+				cmd.Println(string(output))
 			} else {
-				msg := gjson.GetBytes(resp.Data, "msg").String()
-				r, _ := glamour.NewTermRenderer()
-				out, err := r.Render(msg)
-				if err != nil {
-					cmd.Println(msg)
-					return
-				}
-				cmd.Println(out)
+				// 美化输出
+				output, _ := json.MarshalIndent(resp, "", "  ")
+				cmd.Println(string(output))
 			}
 		},
 	}
 
 	// 定义 flags
-	cmd.Flags().StringVarP(&query, "query", "q", "", "搜索关键词")
-	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "输出完整结果")
+	cmd.Flags().StringVar(&query, "query", "", "搜索关键词")
+	cmd.Flags().BoolVar(&minify, "minify", false, "紧凑输出")
 
 	// 标记必填参数
 	_ = cmd.MarkFlagRequired("query")

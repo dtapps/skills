@@ -1,7 +1,6 @@
 package baidu_baike
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 
@@ -74,7 +73,7 @@ type CommandOutputField struct {
 // GetCommandOutputFields 获取所有命令的输出字段映射
 func GetCommandOutputFields() []CommandOutputField {
 	return []CommandOutputField{
-		{CommandName: CmdSearch, FieldType: BaikeSimpleResult{}},
+		{CommandName: CmdSearch, FieldType: nil},
 	}
 }
 
@@ -94,15 +93,13 @@ func (s *BaiduBaikeSkill) createSearchCmd() *cobra.Command {
 	var (
 		searchType string
 		searchKey  string
-		verbose    bool
+		minify     bool
 	)
 
 	cmd := &cobra.Command{
 		Use:   CmdSearch,
 		Short: "查询百度百科词条",
 		Run: func(cmd *cobra.Command, args []string) {
-			// cmd.Printf("正在查询百度百科：%s\n", searchKey)
-
 			// 检查并获取 API Key
 			if _, ok := s.requireAPIKey(cmd); !ok {
 				return
@@ -120,40 +117,22 @@ func (s *BaiduBaikeSkill) createSearchCmd() *cobra.Command {
 				return
 			}
 
-			// 输出结果
-			if verbose {
-				// 输出完整结果（格式化后的 Result）
-				var buf bytes.Buffer
-				if err := json.Indent(&buf, resp.Result, "", "  "); err != nil {
-					cmd.Println(string(resp.Result))
-				} else {
-					cmd.Println(buf.String())
-				}
+			if minify {
+				// 紧凑输出
+				output, _ := json.Marshal(resp)
+				cmd.Println(string(output))
 			} else {
-				// 输出简洁结果（直接使用结构体解析）
-				if len(resp.Result) > 0 {
-					var simpleResult BaikeSimpleResult
-					if err := json.Unmarshal(resp.Result, &simpleResult); err != nil {
-						cmd.Println(string(resp.Result))
-					} else {
-						output, err := json.MarshalIndent(simpleResult, "", "  ")
-						if err != nil {
-							cmd.Println(string(resp.Result))
-						} else {
-							cmd.Println(string(output))
-						}
-					}
-				} else {
-					cmd.Println("{}")
-				}
+				// 美化输出
+				output, _ := json.MarshalIndent(resp, "", "  ")
+				cmd.Println(string(output))
 			}
 		},
 	}
 
 	// 定义 flags
-	cmd.Flags().StringVarP(&searchType, "type", "t", "lemmaTitle", "检索类型：lemmaTitle(按词条名)、lemmaId(按词条ID)")
-	cmd.Flags().StringVarP(&searchKey, "key", "k", "", "检索关键字")
-	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "输出完整结果")
+	cmd.Flags().StringVar(&searchType, "type", "lemmaTitle", "检索类型：lemmaTitle(按词条名)、lemmaId(按词条ID)")
+	cmd.Flags().StringVar(&searchKey, "key", "", "检索关键字")
+	cmd.Flags().BoolVar(&minify, "minify", false, "紧凑输出")
 
 	// 标记必填参数
 	_ = cmd.MarkFlagRequired("key")

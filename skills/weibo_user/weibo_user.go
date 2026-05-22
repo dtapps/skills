@@ -1,7 +1,6 @@
 package weibo_user
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 
@@ -75,8 +74,8 @@ type CommandOutputField struct {
 // GetCommandOutputFields 获取所有命令的输出字段映射
 func GetCommandOutputFields() []CommandOutputField {
 	return []CommandOutputField{
-		{CommandName: CmdMyPosts, FieldType: WeiboSimpleItem{}},
-		{CommandName: CmdMyInfo, FieldType: UserSimpleInfo{}},
+		{CommandName: CmdMyPosts, FieldType: nil},
+		{CommandName: CmdMyInfo, FieldType: nil},
 	}
 }
 
@@ -94,17 +93,15 @@ func (s *WeiboUserSkill) requireAPIToken(cmd *cobra.Command) (string, bool) {
 // createMyPostsCmd 创建我的微博列表子命令
 func (s *WeiboUserSkill) createMyPostsCmd() *cobra.Command {
 	var (
-		count   int
-		page    int
-		verbose bool
+		count  int
+		page   int
+		minify bool
 	)
 
 	cmd := &cobra.Command{
 		Use:   CmdMyPosts,
 		Short: "获取当前用户发布的微博列表",
 		Run: func(cmd *cobra.Command, args []string) {
-			// cmd.Println("正在获取我的微博列表...")
-
 			// 检查并获取 API Token
 			if _, ok := s.requireAPIToken(cmd); !ok {
 				return
@@ -123,48 +120,34 @@ func (s *WeiboUserSkill) createMyPostsCmd() *cobra.Command {
 				return
 			}
 
-			// 输出结果
-			if verbose {
-				var buf bytes.Buffer
-				if err := json.Indent(&buf, resp.Data, "", "  "); err != nil {
-					cmd.Println(string(resp.Data))
-				} else {
-					cmd.Println(buf.String())
-				}
+			if minify {
+				// 紧凑输出
+				output, _ := json.Marshal(resp)
+				cmd.Println(string(output))
 			} else {
-				simpleResults := make([]WeiboSimpleItem, 0)
-				if err := json.Unmarshal(resp.Data, &simpleResults); err != nil {
-					cmd.Println(string(resp.Data))
-				} else {
-					output, err := json.MarshalIndent(simpleResults, "", "  ")
-					if err != nil {
-						cmd.Println(string(resp.Data))
-					} else {
-						cmd.Println(string(output))
-					}
-				}
+				// 美化输出
+				output, _ := json.MarshalIndent(resp, "", "  ")
+				cmd.Println(string(output))
 			}
 		},
 	}
 
 	// 定义 flags
-	cmd.Flags().IntVarP(&count, "count", "c", 20, "返回结果数量")
-	cmd.Flags().IntVarP(&page, "page", "p", 1, "页码")
-	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "输出完整结果")
+	cmd.Flags().IntVar(&count, "count", 20, "返回结果数量")
+	cmd.Flags().IntVar(&page, "page", 1, "页码")
+	cmd.Flags().BoolVar(&minify, "minify", false, "紧凑输出")
 
 	return cmd
 }
 
 // createMyInfoCmd 创建我的信息子命令
 func (s *WeiboUserSkill) createMyInfoCmd() *cobra.Command {
-	var verbose bool
+	var minify bool
 
 	cmd := &cobra.Command{
 		Use:   CmdMyInfo,
 		Short: "获取当前授权用户信息",
 		Run: func(cmd *cobra.Command, args []string) {
-			// cmd.Println("正在获取用户信息...")
-
 			// 检查并获取 API Token
 			if _, ok := s.requireAPIToken(cmd); !ok {
 				return
@@ -176,32 +159,20 @@ func (s *WeiboUserSkill) createMyInfoCmd() *cobra.Command {
 				return
 			}
 
-			// 输出结果
-			if verbose {
-				var buf bytes.Buffer
-				if err := json.Indent(&buf, resp.Data, "", "  "); err != nil {
-					cmd.Println(string(resp.Data))
-				} else {
-					cmd.Println(buf.String())
-				}
+			if minify {
+				// 紧凑输出
+				output, _ := json.Marshal(resp)
+				cmd.Println(string(output))
 			} else {
-				var simpleResult UserSimpleInfo
-				if err := json.Unmarshal(resp.Data, &simpleResult); err != nil {
-					cmd.Println(string(resp.Data))
-				} else {
-					output, err := json.MarshalIndent(simpleResult, "", "  ")
-					if err != nil {
-						cmd.Println(string(resp.Data))
-					} else {
-						cmd.Println(string(output))
-					}
-				}
+				// 美化输出
+				output, _ := json.MarshalIndent(resp, "", "  ")
+				cmd.Println(string(output))
 			}
 		},
 	}
 
 	// 定义 flags
-	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "输出完整结果")
+	cmd.Flags().BoolVar(&minify, "minify", false, "紧凑输出")
 
 	return cmd
 }
