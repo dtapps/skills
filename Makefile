@@ -219,14 +219,32 @@ hefeng-weather-forecast:
 	@mkdir -p $(DTSKILLS_WORK_DIR)
 	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . hefeng-weather forecast --location "$(LOCATION)" $(MINIFY)
 
-# 和风天气 获取天气空气质量
-# make hefeng-weather-air-quality LOCATION=101280601
-# make hefeng-weather-air-quality LOCATION=101280601 MINIFY="--minify"
-.PHONY: hefeng-weather-air-quality
-hefeng-weather-air-quality:
-	@echo "[和风天气] 获取天气空气质量..."
+# 和风天气 获取天气指数
+# make hefeng-weather-indices LOCATION=101280601
+# make hefeng-weather-indices LOCATION=101280601 MINIFY="--minify"
+.PHONY: hefeng-weather-indices
+hefeng-weather-indices:
+	@echo "[和风天气] 获取天气指数..."
 	@mkdir -p $(DTSKILLS_WORK_DIR)
-	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . hefeng-weather air-quality --location "$(LOCATION)" $(MINIFY)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . hefeng-weather indices --location "$(LOCATION)" $(MINIFY)
+
+# 和风天气 获取日出日落
+# make hefeng-weather-sunrise-sunset LOCATION=101280601
+# make hefeng-weather-sunrise-sunset LOCATION=101280601 MINIFY="--minify"
+.PHONY: hefeng-weather-sunrise-sunset
+hefeng-weather-sunrise-sunset:
+	@echo "[和风天气] 获取日出日落..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . hefeng-weather sunrise-sunset --location "$(LOCATION)" $(MINIFY)
+
+# 和风天气 获取月升月落和月相
+# make hefeng-weather-moon-phase LOCATION=101280601
+# make hefeng-weather-moon-phase LOCATION=101280601 MINIFY="--minify"
+.PHONY: hefeng-weather-moon-phase
+hefeng-weather-moon-phase:
+	@echo "[和风天气] 获取月升月落和月相..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . hefeng-weather moon-phase --location "$(LOCATION)" $(MINIFY)
 
 #####################
 

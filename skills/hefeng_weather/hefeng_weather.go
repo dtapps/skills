@@ -3,6 +3,7 @@ package hefeng_weather
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/dtapp/skills/config"
 	"github.com/dtapp/skills/skills"
@@ -45,9 +46,11 @@ func (s *HefengWeatherSkill) GetInfo() types.SkillInfo {
 
 // 命令名称常量
 const (
-	CmdCurrent    = "current"
-	CmdForecast   = "forecast"
-	CmdAirQuality = "air-quality"
+	CmdCurrent       = "current"
+	CmdForecast      = "forecast"
+	CmdIndices       = "indices"
+	CmdSunriseSunset = "sunrise-sunset"
+	CmdMoonPhase     = "moon-phase"
 )
 
 // CommandOutputField 命令与输出字段的映射
@@ -61,7 +64,9 @@ func GetCommandOutputFields() []CommandOutputField {
 	return []CommandOutputField{
 		{CommandName: CmdCurrent, FieldType: nil},
 		{CommandName: CmdForecast, FieldType: nil},
-		{CommandName: CmdAirQuality, FieldType: nil},
+		{CommandName: CmdIndices, FieldType: nil},
+		{CommandName: CmdSunriseSunset, FieldType: nil},
+		{CommandName: CmdMoonPhase, FieldType: nil},
 	}
 }
 
@@ -77,7 +82,9 @@ func (s *HefengWeatherSkill) createCommand() *cobra.Command {
 	// 添加子命令
 	cmd.AddCommand(s.createCurrentCmd())
 	cmd.AddCommand(s.createForecastCmd())
-	cmd.AddCommand(s.createAirQualityCmd())
+	cmd.AddCommand(s.createIndicesCmd())
+	cmd.AddCommand(s.createSunriseSunsetCmd())
+	cmd.AddCommand(s.createMoonPhaseCmd())
 
 	return cmd
 }
@@ -103,7 +110,7 @@ func (s *HefengWeatherSkill) createCurrentCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   CmdCurrent,
 		Short: "获取实时天气",
-		Long:  "获取指定位置的实时天气状况，包含温度、湿度、风向风力、能见度等信息",
+		Long:  "获取中国3000+市县区和海外20万个城市实时天气数据，包括实时温度、体感温度、风力风向、相对湿度、大气压强、降水量、能见度、露点温度、云量等。",
 		Run: func(cmd *cobra.Command, args []string) {
 			if _, ok := s.requireAPIKey(cmd); !ok {
 				return
@@ -147,7 +154,7 @@ func (s *HefengWeatherSkill) createForecastCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   CmdForecast,
 		Short: "获取每日天气预报",
-		Long:  "获取指定位置的每日天气预报，支持 3d(3天)、7d(7天)、10d(10天)、15d(15天)、30d(30天)",
+		Long:  "每日天气预报API，提供全球城市未来3-30天天气预报，包括：日出日落、月升月落、最高最低温度、天气白天和夜间状况、风力、风速、风向、相对湿度、大气压强、降水量、露点温度、紫外线强度、能见度等。",
 		Run: func(cmd *cobra.Command, args []string) {
 			// 检查并获取 API Key
 			if _, ok := s.requireAPIKey(cmd); !ok {
@@ -173,7 +180,7 @@ func (s *HefengWeatherSkill) createForecastCmd() *cobra.Command {
 
 	// 定义 flags
 	cmd.Flags().StringVar(&location, "location", "", "位置（经度,纬度 或 地区ID，如：116.41,39.92 或 101010100）")
-	cmd.Flags().StringVar(&days, "days", "3d", "预报天数: 3d, 7d, 10d, 15d, 30d")
+	cmd.Flags().StringVar(&days, "days", "7d", "预报天数: 3d, 7d, 10d, 15d, 30d")
 	cmd.Flags().BoolVar(&minify, "minify", false, "紧凑输出")
 
 	// 标记必填参数
@@ -182,26 +189,26 @@ func (s *HefengWeatherSkill) createForecastCmd() *cobra.Command {
 	return cmd
 }
 
-// createAirQualityCmd 创建实时空气质量子命令
-func (s *HefengWeatherSkill) createAirQualityCmd() *cobra.Command {
+// createIndicesCmd 创建天气指数预报子命令
+func (s *HefengWeatherSkill) createIndicesCmd() *cobra.Command {
 	var (
 		location string
+		days     string
 		minify   bool
 	)
 
 	cmd := &cobra.Command{
-		Use:   CmdAirQuality,
-		Short: "获取实时空气质量",
-		Long:  "获取指定位置的实时空气质量，包含 AQI 指数、PM2.5、PM10、CO、NO2、SO2、O3 等",
+		Use:   CmdIndices,
+		Short: "获取天气指数预报",
+		Long:  "获取中国和全球城市天气生活指数预报数据",
 		Run: func(cmd *cobra.Command, args []string) {
-			// 检查并获取 API Key
 			if _, ok := s.requireAPIKey(cmd); !ok {
 				return
 			}
 
-			resp, err := GetAirQuality(location)
+			resp, err := GetIndicesForecast(location, days)
 			if err != nil {
-				cmd.Printf("获取空气质量失败: %v\n", err)
+				cmd.Printf("获取天气指数预报失败: %v\n", err)
 				return
 			}
 
@@ -218,6 +225,105 @@ func (s *HefengWeatherSkill) createAirQualityCmd() *cobra.Command {
 
 	// 定义 flags
 	cmd.Flags().StringVar(&location, "location", "", "位置（经度,纬度 或 地区ID，如：116.41,39.92 或 101010100）")
+	cmd.Flags().StringVar(&days, "days", "3d", "预报天数: 1d, 3d")
+	cmd.Flags().BoolVar(&minify, "minify", false, "紧凑输出")
+
+	// 标记必填参数
+	_ = cmd.MarkFlagRequired("location")
+
+	return cmd
+}
+
+// createSunriseSunsetCmd 创建日出日落子命令
+func (s *HefengWeatherSkill) createSunriseSunsetCmd() *cobra.Command {
+	var (
+		location string
+		date     string
+		minify   bool
+	)
+
+	cmd := &cobra.Command{
+		Use:   CmdSunriseSunset,
+		Short: "获取日出日落",
+		Long:  "获取未来60天全球任意地点日出日落时间",
+		Run: func(cmd *cobra.Command, args []string) {
+			if _, ok := s.requireAPIKey(cmd); !ok {
+				return
+			}
+
+			if date == "" {
+				date = time.Now().Format("20060102")
+			}
+
+			resp, err := GetSunriseSunset(location, date)
+			if err != nil {
+				cmd.Printf("获取日出日落时间失败: %v\n", err)
+				return
+			}
+
+			if minify {
+				// 紧凑输出
+				cmd.Println(string(resp))
+			} else {
+				// 美化输出
+				output, _ := json.MarshalIndent(resp, "", "  ")
+				cmd.Println(string(output))
+			}
+		},
+	}
+
+	// 定义 flags
+	cmd.Flags().StringVar(&location, "location", "", "位置（经度,纬度 或 地区ID，如：116.41,39.92 或 101010100）")
+	cmd.Flags().StringVar(&date, "date", "", "日期，格式为 yyyyMMdd，如 20240101")
+	cmd.Flags().BoolVar(&minify, "minify", false, "紧凑输出")
+
+	// 标记必填参数
+	_ = cmd.MarkFlagRequired("location")
+
+	return cmd
+}
+
+// createMoonPhaseCmd 创建月升月落和月相子命令
+func (s *HefengWeatherSkill) createMoonPhaseCmd() *cobra.Command {
+	var (
+		location string
+		date     string
+		minify   bool
+	)
+
+	cmd := &cobra.Command{
+		Use:   CmdMoonPhase,
+		Short: "获取月升月落和月相",
+		Long:  "获取未来60天全球城市月升月落和逐小时的月相数据",
+		Run: func(cmd *cobra.Command, args []string) {
+			if _, ok := s.requireAPIKey(cmd); !ok {
+				return
+			}
+
+			if date == "" {
+				date = time.Now().Format("20060102")
+			}
+
+			resp, err := GetMoonPhase(location, date)
+			if err != nil {
+				cmd.Printf("获取月升月落和月相信息失败: %v\n", err)
+				return
+			}
+
+			if minify {
+				// 紧凑输出
+				cmd.Println(string(resp))
+			} else {
+				// 美化输出
+				output, _ := json.MarshalIndent(resp, "", "  ")
+				cmd.Println(string(output))
+			}
+		},
+	}
+
+	// 定义 flags
+	cmd.Flags().StringVar(&location, "location", "", "位置（经度,纬度 或 地区ID，如：116.41,39.92 或 101010100）")
+	cmd.Flags().StringVar(&date, "date", "", "日期，格式为 yyyyMMdd，如 20240101")
 	cmd.Flags().BoolVar(&minify, "minify", false, "紧凑输出")
 
 	// 标记必填参数

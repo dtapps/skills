@@ -1,7 +1,6 @@
 package hefeng_weather
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/dtapp/skills/config"
@@ -43,10 +42,11 @@ func getHTTPClient() *resty.Client {
 		client.SetDebug(true)
 	}
 
-	return client
-}
+	// 随机获取一个和风天气 API Key
+	apiKey := config.GetHefengAPIKeyRandom()
+	if apiKey != "" {
+		client.SetQueryParam("key", apiKey)
+	}
 
-// handleAPIError 处理 API 错误
-func handleAPIError(code string, msg string) error {
-	return fmt.Errorf("和风天气 API 错误: %s (code: %s)", msg, code)
+	return client
 }
