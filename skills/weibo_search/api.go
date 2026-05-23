@@ -19,7 +19,7 @@ type GetHotSearchOptions struct {
 }
 
 // GetHotSearch 获取微博热搜榜
-func GetHotSearch(opts GetHotSearchOptions) (*HotSearchResponse, error) {
+func GetHotSearch(opts GetHotSearchOptions) (json.RawMessage, error) {
 	client := getHTTPClient()
 
 	req := client.R().
@@ -34,16 +34,12 @@ func GetHotSearch(opts GetHotSearchOptions) (*HotSearchResponse, error) {
 		return nil, fmt.Errorf("请求失败: %w", err)
 	}
 
-	var hotResp HotSearchResponse
-	if err := json.Unmarshal(resp.Bytes(), &hotResp); err != nil {
+	var data json.RawMessage
+	if err := json.Unmarshal(resp.Bytes(), &data); err != nil {
 		return nil, fmt.Errorf("解析热搜数据失败: %w", err)
 	}
 
-	if hotResp.Code != 0 {
-		return nil, handleAPIError(hotResp.Code, hotResp.Msg)
-	}
-
-	return &hotResp, nil
+	return data, nil
 }
 
 // SmartSearchResponse 微博智搜响应
@@ -59,7 +55,7 @@ type SmartSearchOptions struct {
 }
 
 // SmartSearch 执行微博智搜
-func SmartSearch(opts SmartSearchOptions) (*SmartSearchResponse, error) {
+func SmartSearch(opts SmartSearchOptions) (json.RawMessage, error) {
 	client := getHTTPClient()
 
 	req := client.R().
@@ -70,14 +66,10 @@ func SmartSearch(opts SmartSearchOptions) (*SmartSearchResponse, error) {
 		return nil, fmt.Errorf("请求失败: %w", err)
 	}
 
-	var searchResp SmartSearchResponse
-	if err := json.Unmarshal(resp.Bytes(), &searchResp); err != nil {
+	var data json.RawMessage
+	if err := json.Unmarshal(resp.Bytes(), &data); err != nil {
 		return nil, fmt.Errorf("解析搜索数据失败: %w", err)
 	}
 
-	if searchResp.Code != 0 {
-		return nil, handleAPIError(searchResp.Code, searchResp.Msg)
-	}
-
-	return &searchResp, nil
+	return data, nil
 }

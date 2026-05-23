@@ -64,7 +64,7 @@ const DefaultCount = 10
 
 // GetBaiduSearch 执行百度搜索
 // https://cloud.baidu.com/doc/qianfan-api/s/Wmbq4z7e5
-func GetBaiduSearch(opts SearchOptions) (*SearchResponse, error) {
+func GetBaiduSearch(opts SearchOptions) (json.RawMessage, error) {
 	client := getHTTPClient()
 
 	requestBody := buildRequestBody(opts)
@@ -78,17 +78,12 @@ func GetBaiduSearch(opts SearchOptions) (*SearchResponse, error) {
 		return nil, fmt.Errorf("请求失败: %w", err)
 	}
 
-	var result SearchResponse
-	if err := json.Unmarshal(resp.Bytes(), &result); err != nil {
+	var data json.RawMessage
+	if err := json.Unmarshal(resp.Bytes(), &data); err != nil {
 		return nil, fmt.Errorf("解析响应失败: %w", err)
 	}
 
-	// 检查 API 返回码
-	if result.Code != "" && result.Code != "0" {
-		return nil, handleAPIError(result.Code, result.Message)
-	}
-
-	return &result, nil
+	return data, nil
 }
 
 // buildRequestBody 构建请求体

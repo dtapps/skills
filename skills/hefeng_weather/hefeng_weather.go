@@ -1,7 +1,6 @@
 package hefeng_weather
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -122,14 +121,8 @@ func (s *HefengWeatherSkill) createCurrentCmd() *cobra.Command {
 				return
 			}
 
-			if minify {
-				// 紧凑输出
-				cmd.Println(string(resp))
-			} else {
-				// 美化输出
-				output, _ := json.MarshalIndent(resp, "", "  ")
-				cmd.Println(string(output))
-			}
+			// 默认完整输出
+			skills.PrintJSONResponse(cmd, resp, minify)
 		},
 	}
 
@@ -167,14 +160,8 @@ func (s *HefengWeatherSkill) createForecastCmd() *cobra.Command {
 				return
 			}
 
-			if minify {
-				// 紧凑输出
-				cmd.Println(string(resp))
-			} else {
-				// 美化输出
-				output, _ := json.MarshalIndent(resp, "", "  ")
-				cmd.Println(string(output))
-			}
+			// 默认完整输出
+			skills.PrintJSONResponse(cmd, resp, minify)
 		},
 	}
 
@@ -212,14 +199,8 @@ func (s *HefengWeatherSkill) createIndicesCmd() *cobra.Command {
 				return
 			}
 
-			if minify {
-				// 紧凑输出
-				cmd.Println(string(resp))
-			} else {
-				// 美化输出
-				output, _ := json.MarshalIndent(resp, "", "  ")
-				cmd.Println(string(output))
-			}
+			// 默认完整输出
+			skills.PrintJSONResponse(cmd, resp, minify)
 		},
 	}
 
@@ -261,14 +242,8 @@ func (s *HefengWeatherSkill) createSunriseSunsetCmd() *cobra.Command {
 				return
 			}
 
-			if minify {
-				// 紧凑输出
-				cmd.Println(string(resp))
-			} else {
-				// 美化输出
-				output, _ := json.MarshalIndent(resp, "", "  ")
-				cmd.Println(string(output))
-			}
+			// 默认完整输出
+			skills.PrintJSONResponse(cmd, resp, minify)
 		},
 	}
 
@@ -310,14 +285,8 @@ func (s *HefengWeatherSkill) createMoonPhaseCmd() *cobra.Command {
 				return
 			}
 
-			if minify {
-				// 紧凑输出
-				cmd.Println(string(resp))
-			} else {
-				// 美化输出
-				output, _ := json.MarshalIndent(resp, "", "  ")
-				cmd.Println(string(output))
-			}
+			// 默认完整输出
+			skills.PrintJSONResponse(cmd, resp, minify)
 		},
 	}
 

@@ -1,7 +1,6 @@
 package weibo_search
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/dtapp/skills/config"
@@ -118,15 +117,8 @@ func (s *WeiboSearchSkill) createHotSearchCmd() *cobra.Command {
 				return
 			}
 
-			if minify {
-				// 紧凑输出
-				output, _ := json.Marshal(resp)
-				cmd.Println(string(output))
-			} else {
-				// 美化输出
-				output, _ := json.MarshalIndent(resp, "", "  ")
-				cmd.Println(string(output))
-			}
+			// 默认完整输出
+			skills.PrintJSONResponse(cmd, resp, minify)
 		},
 	}
 
@@ -168,15 +160,8 @@ func (s *WeiboSearchSkill) createSmartSearchCmd() *cobra.Command {
 				return
 			}
 
-			if minify {
-				// 紧凑输出
-				output, _ := json.Marshal(resp)
-				cmd.Println(string(output))
-			} else {
-				// 美化输出
-				output, _ := json.MarshalIndent(resp, "", "  ")
-				cmd.Println(string(output))
-			}
+			// 默认完整输出
+			skills.PrintJSONResponse(cmd, resp, minify)
 		},
 	}
 

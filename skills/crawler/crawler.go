@@ -1,12 +1,12 @@
 package crawler
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/dtapp/skills/config"
 	"github.com/dtapp/skills/skills"
 	"github.com/dtapp/skills/types"
+	"github.com/tidwall/gjson"
 
 	"github.com/spf13/cobra"
 )
@@ -45,10 +45,11 @@ func (s *CrawlerSkill) GetInfo() types.SkillInfo {
 
 // 命令名称常量
 const (
-	CmdGoldPriceData   = "gold-price-data"
-	CmdLatestGoldPrice = "latest-gold-price"
-	CmdHotData         = "hot-data"
-	CmdWeatherData     = "weather-data"
+	CmdGoldPriceData       = "gold-price-data"
+	CmdLatestGoldPrice     = "latest-gold-price"
+	CmdJDFinanceGoldStatus = "jd-finance-gold-status"
+	CmdHotData             = "hot-data"
+	CmdWeatherData         = "weather-data"
 )
 
 // CommandOutputField 命令与输出字段的映射
@@ -79,6 +80,7 @@ func (s *CrawlerSkill) createCommand() *cobra.Command {
 	// 添加子命令
 	cmd.AddCommand(s.createGoldPriceDataCmd())
 	cmd.AddCommand(s.createLatestGoldPriceCmd())
+	cmd.AddCommand(s.createJDFinanceGoldStatusCmd())
 	cmd.AddCommand(s.createHotDataCmd())
 	cmd.AddCommand(s.createWeatherDataCmd())
 
@@ -120,14 +122,8 @@ func (s *CrawlerSkill) createGoldPriceDataCmd() *cobra.Command {
 				return
 			}
 
-			if minify {
-				// 紧凑输出
-				cmd.Println(string(resp))
-			} else {
-				// 美化输出
-				output, _ := json.MarshalIndent(resp, "", "  ")
-				cmd.Println(string(output))
-			}
+			// 打印 JSON 响应
+			skills.PrintJSONResponse(cmd, resp, minify)
 		},
 	}
 
@@ -165,14 +161,8 @@ func (s *CrawlerSkill) createLatestGoldPriceCmd() *cobra.Command {
 				return
 			}
 
-			if minify {
-				// 紧凑输出
-				cmd.Println(string(resp))
-			} else {
-				// 美化输出
-				output, _ := json.MarshalIndent(resp, "", "  ")
-				cmd.Println(string(output))
-			}
+			// 打印 JSON 响应
+			skills.PrintJSONResponse(cmd, resp, minify)
 		},
 	}
 
@@ -183,6 +173,53 @@ func (s *CrawlerSkill) createLatestGoldPriceCmd() *cobra.Command {
 
 	// 标记必填参数
 	_ = cmd.MarkFlagRequired("date")
+
+	return cmd
+}
+
+// createJDFinanceGoldStatusCmd 创建京东金融黄金市场状态子命令
+func (s *CrawlerSkill) createJDFinanceGoldStatusCmd() *cobra.Command {
+	var (
+		datetime string
+		format   string
+		minify   bool
+	)
+
+	cmd := &cobra.Command{
+		Use:   CmdJDFinanceGoldStatus,
+		Short: "获取京东金融黄金市场状态",
+		Long:  "获取指定日期京东金融黄金市场状态，支持格式化输出",
+		Run: func(cmd *cobra.Command, args []string) {
+			if _, ok := s.requireMCPURL(cmd); !ok {
+				return
+			}
+
+			resp, err := GetJDFinanceGoldStatus(datetime)
+			if err != nil {
+				cmd.Printf("获取京东金融黄金市场状态失败: %v\n", err)
+				return
+			}
+
+			// 如果指定了 format，使用 gjson 提取指定字段
+			if format != "" {
+				result := gjson.GetBytes(resp, format)
+				if result.Exists() {
+					cmd.Println(result.String())
+				} else {
+					cmd.Printf("字段 '%s' 不存在\n", format)
+				}
+				return
+			}
+
+			// 默认完整输出
+			skills.PrintJSONResponse(cmd, resp, minify)
+		},
+	}
+
+	// 定义 flags
+	cmd.Flags().StringVar(&datetime, "datetime", "", "日期时间（格式：YYYY-MM-DD HH:MM:SS）")
+	cmd.Flags().StringVar(&format, "format", "", "gjson 路径，用于提取指定字段（如：code, message, data.status）")
+	cmd.Flags().BoolVar(&minify, "minify", false, "紧凑输出（仅在 format 为空时有效）")
 
 	return cmd
 }
@@ -210,14 +247,8 @@ func (s *CrawlerSkill) createHotDataCmd() *cobra.Command {
 				return
 			}
 
-			if minify {
-				// 紧凑输出
-				cmd.Println(string(resp))
-			} else {
-				// 美化输出
-				output, _ := json.MarshalIndent(resp, "", "  ")
-				cmd.Println(string(output))
-			}
+			// 打印 JSON 响应
+			skills.PrintJSONResponse(cmd, resp, minify)
 		},
 	}
 
@@ -256,14 +287,8 @@ func (s *CrawlerSkill) createWeatherDataCmd() *cobra.Command {
 				return
 			}
 
-			if minify {
-				// 紧凑输出
-				cmd.Println(string(resp))
-			} else {
-				// 美化输出
-				output, _ := json.MarshalIndent(resp, "", "  ")
-				cmd.Println(string(output))
-			}
+			// 打印 JSON 响应
+			skills.PrintJSONResponse(cmd, resp, minify)
 		},
 	}
 

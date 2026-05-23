@@ -29,7 +29,7 @@ type UserTimelineOptions struct {
 }
 
 // GetUserTimeline 获取当前授权用户发布的微博列表
-func GetUserTimeline(opts UserTimelineOptions) (*UserTimelineResponse, error) {
+func GetUserTimeline(opts UserTimelineOptions) (json.RawMessage, error) {
 	client := getHTTPClient()
 
 	resp, err := client.R().
@@ -43,16 +43,12 @@ func GetUserTimeline(opts UserTimelineOptions) (*UserTimelineResponse, error) {
 		return nil, fmt.Errorf("请求失败: %w", err)
 	}
 
-	var timelineResp UserTimelineResponse
-	if err := json.Unmarshal(resp.Bytes(), &timelineResp); err != nil {
+	var data json.RawMessage
+	if err := json.Unmarshal(resp.Bytes(), &data); err != nil {
 		return nil, fmt.Errorf("解析微博列表数据失败: %w", err)
 	}
 
-	if timelineResp.BaseRsp.Code != 0 {
-		return nil, handleAPIError(timelineResp.BaseRsp.Code, timelineResp.BaseRsp.Msg)
-	}
-
-	return &timelineResp, nil
+	return data, nil
 }
 
 // UserInfoResponse 用户信息响应
@@ -63,7 +59,7 @@ type UserInfoResponse struct {
 }
 
 // GetUserInfo 获取当前授权用户信息
-func GetUserInfo() (*UserInfoResponse, error) {
+func GetUserInfo() (json.RawMessage, error) {
 	client := getHTTPClient()
 
 	resp, err := client.R().
@@ -73,16 +69,12 @@ func GetUserInfo() (*UserInfoResponse, error) {
 		return nil, fmt.Errorf("请求失败: %w", err)
 	}
 
-	var userResp UserInfoResponse
-	if err := json.Unmarshal(resp.Bytes(), &userResp); err != nil {
+	var data json.RawMessage
+	if err := json.Unmarshal(resp.Bytes(), &data); err != nil {
 		return nil, fmt.Errorf("解析用户数据失败: %w", err)
 	}
 
-	if userResp.BaseRsp.Code != 0 {
-		return nil, handleAPIError(userResp.BaseRsp.Code, userResp.BaseRsp.Msg)
-	}
-
-	return &userResp, nil
+	return data, nil
 }
 
 // WeiboSimpleItem 微博简洁条目

@@ -56,6 +56,29 @@ func GetLatestGoldPrice(date, source string) (json.RawMessage, error) {
 	return parseMCPResult(result)
 }
 
+// GetJDFinanceGoldStatus 获取京东金融黄金市场状态
+// tool: get_jdfinance_gold_status
+func GetJDFinanceGoldStatus(datetime string) (json.RawMessage, error) {
+	client, err := NewMCPClient("crawler")
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = client.Close() }()
+
+	ctx := context.Background()
+
+	params := map[string]any{
+		"datetime": datetime,
+	}
+
+	result, err := client.CallTool(ctx, "get_jdfinance_gold_status", params)
+	if err != nil {
+		return nil, fmt.Errorf("调用 MCP Tool 失败: %w", err)
+	}
+
+	return parseMCPResult(result)
+}
+
 // GetHotData 获取热搜数据
 // tool: get_hot_data
 func GetHotData(date, source string) (json.RawMessage, error) {

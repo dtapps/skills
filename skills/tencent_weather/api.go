@@ -12,7 +12,7 @@ type CurrentWeatherResponse struct {
 }
 
 // GetCurrentWeather 获取实时天气
-func GetCurrentWeather(adcode string, caller string) (*CurrentWeatherResponse, error) {
+func GetCurrentWeather(adcode string, caller string) (json.RawMessage, error) {
 	client := getHTTPClient(caller)
 
 	req := client.R().
@@ -29,17 +29,12 @@ func GetCurrentWeather(adcode string, caller string) (*CurrentWeatherResponse, e
 		return nil, fmt.Errorf("请求失败: %w", err)
 	}
 
-	var result CurrentWeatherResponse
-	if err := json.Unmarshal(resp.Bytes(), &result); err != nil {
+	var data json.RawMessage
+	if err := json.Unmarshal(resp.Bytes(), &data); err != nil {
 		return nil, fmt.Errorf("解析天气数据失败: %w", err)
 	}
 
-	// 检查 API 返回码
-	if result.BaseRsp.Code != 0 {
-		return nil, handleAPIError(result.BaseRsp.Code, result.BaseRsp.Msg)
-	}
-
-	return &result, nil
+	return data, nil
 }
 
 // ForecastWeatherResponse 预报天气响应
@@ -49,7 +44,7 @@ type ForecastWeatherResponse struct {
 }
 
 // GetForecastWeather 获取天气预报
-func GetForecastWeather(adcode string, weatherType string, caller string) (*ForecastWeatherResponse, error) {
+func GetForecastWeather(adcode string, weatherType string, caller string) (json.RawMessage, error) {
 	client := getHTTPClient(caller)
 
 	req := client.R().
@@ -66,17 +61,12 @@ func GetForecastWeather(adcode string, weatherType string, caller string) (*Fore
 		return nil, fmt.Errorf("请求失败: %w", err)
 	}
 
-	var result ForecastWeatherResponse
-	if err := json.Unmarshal(resp.Bytes(), &result); err != nil {
+	var data json.RawMessage
+	if err := json.Unmarshal(resp.Bytes(), &data); err != nil {
 		return nil, fmt.Errorf("解析天气数据失败: %w", err)
 	}
 
-	// 检查 API 返回码
-	if result.BaseRsp.Code != 0 {
-		return nil, handleAPIError(result.BaseRsp.Code, result.BaseRsp.Msg)
-	}
-
-	return &result, nil
+	return data, nil
 }
 
 // AirQualitySimpleItem 空气质量简洁条目
@@ -99,7 +89,7 @@ type AirQualityResponse struct {
 }
 
 // GetAirQuality 获取天气空气质量
-func GetAirQuality(adcode string, caller string) (*AirQualityResponse, error) {
+func GetAirQuality(adcode string, caller string) (json.RawMessage, error) {
 	client := getHTTPClient(caller)
 
 	req := client.R().
@@ -116,17 +106,12 @@ func GetAirQuality(adcode string, caller string) (*AirQualityResponse, error) {
 		return nil, fmt.Errorf("请求失败: %w", err)
 	}
 
-	var result AirQualityResponse
-	if err := json.Unmarshal(resp.Bytes(), &result); err != nil {
+	var data json.RawMessage
+	if err := json.Unmarshal(resp.Bytes(), &data); err != nil {
 		return nil, fmt.Errorf("解析空气质量数据失败: %w", err)
 	}
 
-	// 检查 API 返回码
-	if result.BaseRsp.Code != 0 {
-		return nil, handleAPIError(result.BaseRsp.Code, result.BaseRsp.Msg)
-	}
-
-	return &result, nil
+	return data, nil
 }
 
 // IP2CitySimpleResult IP 定位简洁输出结构体
@@ -155,7 +140,7 @@ type IP2CityResponse struct {
 }
 
 // GetIP2City IP 定位
-func GetIP2City(caller string) (*IP2CityResponse, error) {
+func GetIP2City(caller string) (json.RawMessage, error) {
 	client := getHTTPClient(caller)
 
 	resp, err := client.R().
@@ -166,15 +151,10 @@ func GetIP2City(caller string) (*IP2CityResponse, error) {
 		return nil, fmt.Errorf("请求失败: %w", err)
 	}
 
-	var result IP2CityResponse
-	if err := json.Unmarshal(resp.Bytes(), &result); err != nil {
+	var data json.RawMessage
+	if err := json.Unmarshal(resp.Bytes(), &data); err != nil {
 		return nil, fmt.Errorf("解析 IP 定位数据失败: %w", err)
 	}
 
-	// 检查 API 返回码
-	if result.Ret != 0 {
-		return nil, handleAPIError(result.Ret, result.Msg)
-	}
-
-	return &result, nil
+	return data, nil
 }

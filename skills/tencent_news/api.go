@@ -17,7 +17,7 @@ type HotNewsResponse struct {
 }
 
 // GetHotNews 获取热点新闻
-func GetHotNews(limit int, caller string) (*HotNewsResponse, error) {
+func GetHotNews(limit int, caller string) (json.RawMessage, error) {
 	client := getHTTPClient(caller)
 
 	resp, err := client.R().
@@ -29,16 +29,12 @@ func GetHotNews(limit int, caller string) (*HotNewsResponse, error) {
 		return nil, fmt.Errorf("请求失败: %w", err)
 	}
 
-	var hotResp HotNewsResponse
-	if err := json.Unmarshal(resp.Bytes(), &hotResp); err != nil {
+	var data json.RawMessage
+	if err := json.Unmarshal(resp.Bytes(), &data); err != nil {
 		return nil, fmt.Errorf("解析热点新闻数据失败: %w", err)
 	}
 
-	if hotResp.BaseRsp.Code != 0 {
-		return nil, handleAPIError(hotResp.BaseRsp.Code, hotResp.BaseRsp.Msg)
-	}
-
-	return &hotResp, nil
+	return data, nil
 }
 
 // SearchNewsResponse 搜索新闻响应
@@ -53,7 +49,7 @@ type SearchNewsResponse struct {
 }
 
 // SearchNews 搜索新闻
-func SearchNews(query string, limit int, page int, caller string) (*SearchNewsResponse, error) {
+func SearchNews(query string, limit int, page int, caller string) (json.RawMessage, error) {
 	client := getHTTPClient(caller)
 
 	// 生成 query_id
@@ -78,16 +74,12 @@ func SearchNews(query string, limit int, page int, caller string) (*SearchNewsRe
 		return nil, fmt.Errorf("请求失败: %w", err)
 	}
 
-	var searchResp SearchNewsResponse
-	if err := json.Unmarshal(resp.Bytes(), &searchResp); err != nil {
+	var data json.RawMessage
+	if err := json.Unmarshal(resp.Bytes(), &data); err != nil {
 		return nil, fmt.Errorf("解析搜索数据失败: %w", err)
 	}
 
-	if searchResp.BaseRsp.Code != 0 {
-		return nil, handleAPIError(searchResp.BaseRsp.Code, searchResp.BaseRsp.Msg)
-	}
-
-	return &searchResp, nil
+	return data, nil
 }
 
 // BroadcastResponse 早晚报响应
@@ -98,7 +90,7 @@ type BroadcastResponse struct {
 
 // GetBroadcast 获取早晚报
 // broadcastType: 1=早报, 2=晚报
-func GetBroadcast(broadcastType int, caller string) (*BroadcastResponse, error) {
+func GetBroadcast(broadcastType int, caller string) (json.RawMessage, error) {
 	client := getHTTPClient(caller)
 
 	resp, err := client.R().
@@ -110,14 +102,10 @@ func GetBroadcast(broadcastType int, caller string) (*BroadcastResponse, error) 
 		return nil, fmt.Errorf("请求失败: %w", err)
 	}
 
-	var broadcastResp BroadcastResponse
-	if err := json.Unmarshal(resp.Bytes(), &broadcastResp); err != nil {
+	var data json.RawMessage
+	if err := json.Unmarshal(resp.Bytes(), &data); err != nil {
 		return nil, fmt.Errorf("解析早晚报数据失败: %w", err)
 	}
 
-	if broadcastResp.BaseRsp.Code != 0 {
-		return nil, handleAPIError(broadcastResp.BaseRsp.Code, broadcastResp.BaseRsp.Msg)
-	}
-
-	return &broadcastResp, nil
+	return data, nil
 }

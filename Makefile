@@ -365,6 +365,16 @@ crawler-latest-gold-price:
 	@mkdir -p $(DTSKILLS_WORK_DIR)
 	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . crawler latest-gold-price --date "$(DATE)" $(MINIFY)
 
+# 爬虫 获取京东金融黄金市场状态
+# make crawler-jd-finance-gold-status
+# make crawler-jd-finance-gold-status FORMAT="--format is_open"
+# make crawler-jd-finance-gold-status MINIFY="--minify"
+.PHONY: crawler-jd-finance-gold-status
+crawler-jd-finance-gold-status:
+	@echo "[爬虫] 获取京东金融黄金市场状态..."
+	@mkdir -p $(DTSKILLS_WORK_DIR)
+	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . crawler jd-finance-gold-status $(FORMAT) $(MINIFY)
+
 # 爬虫 获取热搜数据
 # make crawler-hot-data DATE=2026-05-22
 # make crawler-hot-data DATE=2026-05-22 MINIFY="--minify"

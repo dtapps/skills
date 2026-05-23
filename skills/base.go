@@ -1,6 +1,7 @@
 package skills
 
 import (
+	"encoding/json"
 	"reflect"
 	"sort"
 	"strings"
@@ -169,4 +170,23 @@ func extractOutputFieldsRecursive(t reflect.Type, prefix string) []types.OutputF
 		return fields[i].Name < fields[j].Name
 	})
 	return fields
+}
+
+// PrintJSONResponse 打印 JSON 响应
+// minify 为 true 时紧凑输出，否则美化输出
+func PrintJSONResponse(cmd *cobra.Command, data []byte, minify bool) {
+	if minify {
+		// 紧凑输出
+		cmd.Println(string(data))
+	} else {
+		// 美化输出：先解析再格式化
+		var v any
+		if err := json.Unmarshal(data, &v); err == nil {
+			output, _ := json.MarshalIndent(v, "", "  ")
+			cmd.Println(string(output))
+		} else {
+			// 解析失败，直接输出
+			cmd.Println(string(data))
+		}
+	}
 }

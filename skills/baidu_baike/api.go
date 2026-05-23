@@ -21,7 +21,7 @@ type BaikeOptions struct {
 
 // GetBaiduBaike 查询百度百科
 // https://cloud.baidu.com/doc/qianfan/s/bmh4stpbh
-func GetBaiduBaike(opts BaikeOptions) (*BaikeResponse, error) {
+func GetBaiduBaike(opts BaikeOptions) (json.RawMessage, error) {
 	client := getHTTPClient()
 
 	req := client.R().
@@ -34,15 +34,10 @@ func GetBaiduBaike(opts BaikeOptions) (*BaikeResponse, error) {
 		return nil, fmt.Errorf("请求失败: %w", err)
 	}
 
-	var result BaikeResponse
-	if err := json.Unmarshal(resp.Bytes(), &result); err != nil {
+	var data json.RawMessage
+	if err := json.Unmarshal(resp.Bytes(), &data); err != nil {
 		return nil, fmt.Errorf("解析响应失败: %w", err)
 	}
 
-	// 检查 API 返回码
-	if result.Code != "" && result.Code != "0" {
-		return nil, handleAPIError(result.Code, result.Message)
-	}
-
-	return &result, nil
+	return data, nil
 }
