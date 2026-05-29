@@ -9,6 +9,7 @@ vendor/
 # IDE 配置
 .idea/
 .vscode/
+.trae/
 
 # 临时文件
 *.tmp
