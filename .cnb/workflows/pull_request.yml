@@ -1,4 +1,4 @@
-"**":
+$:
   pull_request:
     - stages:
         - name: code-review
