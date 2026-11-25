@@ -1,0 +1,10 @@
+# CNB 代码安全扫描 · 公共忽略规则
+# https://docs.cnb.cool/zh/security/intro.html
+#
+# 语义（gitignore 风格）：本文件每一条都是「排除」；'!' 前缀才是重新纳入。
+# 对所有扫描能力生效。能力级差异才需要 .cnb/security/code_scan_config.yml，
+# 目前 secrets 与 software-composition-analysis 口径一致，统一写在这里。
+#
+# 原则：排除面保持最小。每多加一条，安全扫描面就少一块，按实际路径补，不要预先放宽。
+
+**/*_test.go

@@ -1,0 +1,53 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  // 定位：Dependabot 为主，Renovate 为备用；由 .github/workflows/renovate.yml
+  //       每天定时运行，也可在 Actions 页面手动触发。
+  // 备用策略：dependencyDashboardApproval=true，定时运行只刷新 Dependency Dashboard，
+  //           不自动开 PR；Dependabot 失效时人工在 Dashboard 勾选需要的更新再创建 PR。
+  // 本仓库是纯 Go 项目：只扫描 gomod 与 github-actions，与 dependabot.yml 对齐。
+  extends: ["config:recommended"],
+  timezone: "Asia/Shanghai",
+  schedule: ["at any time"],
+  prConcurrentLimit: 5,
+  prHourlyLimit: 2,
+  semanticCommits: "disabled",
+  commitMessagePrefix: "build(deps):",
+  commitMessageAction: "bump",
+  separateMajorMinor: true,
+  separateMinorPatch: false,
+  minimumReleaseAge: "3 days",
+  dependencyDashboard: true,
+  dependencyDashboardApproval: true,
+  dependencyDashboardTitle: "依赖更新面板（Renovate 备用）",
+  dependencyDashboardHeader: "Dependabot 是主依赖更新方案；本面板仅作备用。更新 PR 需人工在 Dashboard 勾选后才会创建。",
+  dependencyDashboardFooter: "勾选后 Renovate 会在下一次运行时创建 PR；发布未满 3 天的新版本不会显示。",
+  enabledManagers: ["gomod", "github-actions"],
+  labels: ["dependencies"],
+  automerge: false,
+  packageRules: [
+    {
+      matchManagers: ["gomod"],
+      postUpdateOptions: ["gomodTidy"],
+      addLabels: ["go"],
+    },
+    {
+      matchManagers: ["gomod"],
+      matchUpdateTypes: ["minor", "patch"],
+      groupName: "Go 依赖（非 major）",
+    },
+    // Go 工具链由 CI 镜像 ghcr.io/dtapps/golang:latest 提供，
+    // go.mod 的 go / toolchain 指令需人工评估后修改。
+    {
+      matchManagers: ["gomod"],
+      matchDepTypes: ["golang", "toolchain"],
+      enabled: false,
+    },
+    // ---------- GitHub Actions ----------
+    {matchManagers: ["github-actions"], addLabels: ["github-actions"]},
+    {
+      matchManagers: ["github-actions"],
+      matchUpdateTypes: ["minor", "patch", "digest"],
+      groupName: "GitHub Actions（非 major）",
+    },
+  ],
+}

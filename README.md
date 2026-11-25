@@ -2,6 +2,20 @@
 
 一个基于 Go 语言的 Skills 管理工具，使用 Cobra 和 charmbracelet/huh 库实现。
 
+<div align="center">
+
+[![CNB 版本](https://cnb.cool/dtapp/skills/-/badge/release)](https://cnb.cool/dtapp/skills/-/badge/release.link) [![CNB Star 数](https://cnb.cool/dtapp/skills/-/badge/star)](https://cnb.cool/dtapp/skills) [![CNB Fork 数](https://cnb.cool/dtapp/skills/-/badge/fork)](https://cnb.cool/dtapp/skills) [![CNB 构建](https://cnb.cool/dtapp/skills/-/badge/git/latest/ci/status/push)](https://cnb.cool/dtapp/skills) [![CNB 覆盖率](https://cnb.cool/dtapp/skills/-/badge/git/latest/testing/unit/coverage)](https://cnb.cool/dtapp/skills/-/insights/unit-test) [![CNB PR 覆盖率](https://cnb.cool/dtapp/skills/-/badge/git/latest/testing/unit/coverage-pr)](https://cnb.cool/dtapp/skills/-/insights/unit-test) ![CNB 下载请求数](https://img.shields.io/endpoint?label=CNB%20下载请求数&url=https%3A%2F%2Fdl-stats.dtapp.net%2Fshields.json%3Fplatform%3Dcnb.cool%26repository%3D%2Fdtapp%2Fskills)
+
+[![CNB 漏洞](https://cnb.cool/dtapp/skills/-/badge/security/vulnerability/full/latest)](https://cnb.cool/dtapp/skills/-/badge/security/vulnerability/full/latest.link) [![CNB 漏洞差异](https://cnb.cool/dtapp/skills/-/badge/security/vulnerability/diff/latest)](https://cnb.cool/dtapp/skills/-/badge/security/vulnerability/diff/latest.link) [![CNB 许可证](https://cnb.cool/dtapp/skills/-/badge/security/license/full/latest)](https://cnb.cool/dtapp/skills/-/badge/security/license/full/latest.link) [![CNB 许可证差异](https://cnb.cool/dtapp/skills/-/badge/security/license/diff/latest)](https://cnb.cool/dtapp/skills/-/badge/security/license/diff/latest.link) [![CNB SBOM](https://cnb.cool/dtapp/skills/-/badge/security/sbom/full/latest)](https://cnb.cool/dtapp/skills/-/badge/security/sbom/full/latest.link) [![CNB SBOM 差异](https://cnb.cool/dtapp/skills/-/badge/security/sbom/diff/latest)](https://cnb.cool/dtapp/skills/-/badge/security/sbom/diff/latest.link)
+
+[![CNB 访问](https://commit.cool/badge/visit/dtapp/skills)](https://cnb.cool/dtapp/skills) [![CNB 发布频率](https://commit.cool/badge/release/frequency/dtapp/skills)](https://cnb.cool/dtapp/skills) [![CNB 距离上次发布](https://commit.cool/badge/release/last/dtapp/skills)](https://cnb.cool/dtapp/skills) [![CNB 发布总数](https://commit.cool/badge/releases/dtapp/skills)](https://cnb.cool/dtapp/skills/-/releases) [![CNB 仓库年龄](https://commit.cool/badge/age/dtapp/skills)](https://cnb.cool/dtapp/skills) [![CNB 主要语言](https://commit.cool/badge/language/dtapp/skills)](https://cnb.cool/dtapp/skills) [![CNB 仓库许可证](https://commit.cool/badge/license/dtapp/skills)](https://cnb.cool/dtapp/skills) [![CNB 存储用量](https://commit.cool/badge/usage/dtapp/skills)](https://cnb.cool/dtapp/skills) [![CNB Git 存储](https://commit.cool/badge/usage/git/dtapp/skills)](https://cnb.cool/dtapp/skills) [![CNB LFS 存储](https://commit.cool/badge/usage/lfs/dtapp/skills)](https://cnb.cool/dtapp/skills)
+
+[![GitHub 版本](https://img.shields.io/github/v/release/dtapps/skills?style=flat-square)](https://github.com/dtapps/skills/releases) [![GitHub 下载量](https://img.shields.io/github/downloads/dtapps/skills/total?style=flat-square)](https://github.com/dtapps/skills/releases) [![GitHub Star 数](https://img.shields.io/github/stars/dtapps/skills?style=flat-square)](https://github.com/dtapps/skills/stargazers) [![GitHub Fork 数](https://img.shields.io/github/forks/dtapps/skills?style=flat-square)](https://github.com/dtapps/skills/network/members) [![GitHub 许可证](https://img.shields.io/github/license/dtapps/skills?style=flat-square)](LICENSE) [![GitHub 支持平台](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-007EC6?style=flat-square)](https://github.com/dtapps/skills) [![GitHub 构建](https://img.shields.io/github/actions/workflow/status/dtapps/skills/push.yml?style=flat-square)](https://github.com/dtapps/skills/actions/workflows/push.yml) [![Codecov](https://img.shields.io/codecov/c/github/dtapps/skills?style=flat-square&label=Codecov&logo=codecov)](https://codecov.io/gh/dtapps/skills) [![Coveralls](https://img.shields.io/coveralls/github/dtapps/skills?style=flat-square&label=Coveralls&logo=coveralls)](https://coveralls.io/github/dtapps/skills) ![GitHub 下载请求数](https://img.shields.io/endpoint?label=GitHub%20下载请求数&url=https%3A%2F%2Fdl-stats.dtapp.top%2Fshields.json%3Fplatform%3Dgithub.com%26repository%3D%2Fdtapps%2Fskills)
+
+[![GitHub 访问](https://visitor-badge.laobi.icu/badge?page_id=github/dtapps/skills)](https://github.com/dtapps/skills) [![GitHub 距离上次发布](https://img.shields.io/github/release-date/dtapps/skills)](https://github.com/dtapps/skills) [![GitHub 仓库年龄](https://img.shields.io/github/created-at/dtapps/skills)](https://github.com/dtapps/skills) [![GitHub 主要语言](https://img.shields.io/github/languages/top/dtapps/skills)](https://github.com/dtapps/skills) [![GitHub 存储用量](https://img.shields.io/github/repo-size/dtapps/skills)](https://github.com/dtapps/skills)
+
+</div>
+
 ## 功能特性
 
 - **生成技能包**：通过交互式界面生成 SKILL.md 文件
@@ -73,7 +87,7 @@ dtskills upgrade
 dtskills help
 ```
 
-**注意**：通过 deb/rpm 安装后，二进制文件位于 `/usr/bin/dtskills`，配置文件位于 `/etc/dtskills/config.yaml`。
+**注意**：通过 deb/rpm 安装后，二进制文件位于 `/usr/bin/dtskills`；配置文件位于 `~/.config/dtskills/config.yaml`，可用 `dtskills config init` 初始化。
 
 ## 使用方法
 
@@ -341,7 +355,7 @@ make deps
 ## 环境变量
 
 | 变量名                 | 说明                             | 示例           |
-| ---------------------- | -------------------------------- | -------------- |
+|------------------------|----------------------------------|----------------|
 | `DTSKILLS_WORK_DIR`    | 工作目录（存储技能包和统计数据） | `./`           |
 | `BAIDU_API_KEY`        | 百度 API Key                     | `your-api-key` |
 | `TENCENT_NEWS_API_KEY` | 腾讯新闻/天气 API Key            | `your-api-key` |
@@ -354,6 +368,37 @@ make deps
 - [charmbracelet/lipgloss](https://github.com/charmbracelet/lipgloss) - 样式渲染
 - [minio/selfupdate](https://github.com/minio/selfupdate) - 自升级功能
 
+## 仓库
+
+| 平台   | 地址                             |
+|--------|----------------------------------|
+| CNB    | https://cnb.cool/dtapp/skills    |
+| GitHub | https://github.com/dtapps/skills |
+
 ## 许可证
 
-MIT License
+见 [LICENSE](LICENSE) 文件。
+
+## Star 走势
+
+<details>
+<summary><b>点击展开查看图表</b></summary>
+
+**CNB**
+
+[![CNB Star 走势](https://commit.cool/stars/dtapp/skills)](https://cnb.cool/dtapp/skills)
+
+**GitHub**
+
+[![Star 走势](https://api.star-history.com/chart?repos=dtapps/skills&type=date&legend=top-left)](https://www.star-history.com/?repos=dtapps%2Fskills&type=date&legend=top-left)
+
+</details>
+
+## 下载量统计图
+
+<details>
+<summary><b>点击展开查看图表</b></summary>
+
+[![下载量统计图](https://release-monitor.com/chart/dtapps/skills.svg?stable=5)](https://release-monitor.com/#/dtapps/skills)
+
+</details>

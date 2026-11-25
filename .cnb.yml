@@ -1,3 +1,12 @@
 include:
-  - .cnb/workflows/build_go_project.yml
-  - .cnb/workflows/pull_request.yml
+  - .cnb/workflows/announcement-cleanup.yml
+  - .cnb/workflows/pull-coverage.yml
+  - .cnb/workflows/push-coverage.yml
+  - .cnb/workflows/push.yml
+  - .cnb/workflows/release.yml
+  - https://cnb.cool/dtapp/ci-templates/-/blob/main/cnb-sechook.yml
+  - https://cnb.cool/dtapp/ci-templates/-/blob/main/code-review.yml
+  - https://cnb.cool/dtapp/ci-templates/-/blob/main/code-security-config.yml
+  - https://cnb.cool/dtapp/ci-templates/-/blob/main/codewiki.yml
+  - https://cnb.cool/dtapp/ci-templates/-/blob/main/knowledge-base.yml
+  - https://cnb.cool/dtapp/ci-templates/-/blob/main/sca.yml

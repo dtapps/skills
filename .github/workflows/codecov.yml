@@ -1,0 +1,73 @@
+# 覆盖率上报到 Codecov（GitHub 侧，与 CNB 的 testing:coverage 门禁相互独立）
+# 职责分离：
+#   - CNB 流水线（.cnb/workflows/push-coverage.yml、pull-coverage.yml）负责硬性红线
+#     门禁（lines / diffLines），阻断低覆盖率合并；
+#   - 本工作流负责把覆盖率上传到 Codecov（PR 评论 + 徽章 + patch 状态）。
+# 本仓库是纯 Go 项目（main.go 在根目录），只有 go 一份报告；配置见 .github/codecov.yml。
+#
+# https://github.com/actions/runner-images
+# https://github.com/actions/checkout
+# https://github.com/actions/cache
+# https://github.com/codecov/codecov-action
+# https://github.com/dtapps/golang
+name: Codecov
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+  packages: read
+concurrency:
+  group: codecov-${{ github.ref }}
+  cancel-in-progress: false
+  queue: max
+jobs:
+  coverage:
+    runs-on: ubuntu-26.04
+    container:
+      image: ghcr.io/dtapps/golang:latest
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v7
+      - name: 设置 Go 工具链目录
+        shell: bash
+        run: |
+          echo "GO_PATH_DIR=/go" >> "$GITHUB_ENV"
+          echo "GO_BIN_DIR=/go/bin" >> "$GITHUB_ENV"
+      - name: 缓存 Go module
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.GO_PATH_DIR }}/pkg/mod
+          key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-mod-
+      - name: 缓存 Go build 缓存
+        uses: actions/cache@v6
+        with:
+          path: ${{ format('{0}/.cache/go-build', env.HOME) }}
+          key: ${{ runner.os }}-go-build-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-build-
+      - name: 安装所有依赖
+        run: make deps-go
+      - name: 生成 Go 测试覆盖率与测试报告
+        run: make junit-go # 产出 coverage.out + go-test-report.xml
+      - name: 上传 Go 覆盖率到 Codecov
+        uses: codecov/codecov-action@v7
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.out
+          flags: go
+          fail_ci_if_error: false
+      # Test Analytics：JUnit 由第三步单独上传（report_type + disable_search），
+      # 避免和 coverage 报告混在一次上传里被当成覆盖率数据。
+      - name: 上传测试结果到 Codecov
+        uses: codecov/codecov-action@v7
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./go-test-report.xml
+          report_type: test_results
+          disable_search: true
+          fail_ci_if_error: false

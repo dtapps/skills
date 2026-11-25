@@ -1,0 +1,30 @@
+'**':
+  push:
+    - runner:
+        tags: cnb:arch:amd64 # 指定 Runner 必须有这个标签
+      services:
+        - docker # 启用 Docker 服务（用于 docker build/push）
+      docker:
+        image: docker.cnb.cool/dtapp/golang:latest # 统一使用预构建的 CI 环境镜像
+        volumes:
+          - /root/.cache/go-build:copy-on-write # Go 构建缓存 - 加速编译
+          - /go/pkg/mod:copy-on-write # 仅缓存 Go 模块下载，避免覆盖镜像内预装的 /go/bin 工具
+      # Makefile 用 CI 判断流水线环境（make check 里「过时依赖」只提示不阻塞）。
+      # 本仓库是纯 Go 项目，没有前端依赖与前端检查步骤。
+      env:
+        CI: 'true'
+      stages:
+        - name: 安装全部 Go 依赖
+          script: make deps-go
+        # - name: 格式化/修复项目
+        #   script: make format
+        - name: 运行 Go 静态检查
+          script: make check-go-vet
+        - name: 运行 Go lint 扫描
+          script: make check-go-lint
+        - name: 运行 Go fix 问题
+          script: make check-go-fix
+        - name: 运行 Go 单元测试
+          script: make check-go-test
+        - name: 运行 Go 依赖漏洞检查
+          script: make check-go-vuln

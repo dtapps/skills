@@ -1,0 +1,32 @@
+'**':
+  pull_request:
+    # Go 单元测试覆盖率（增量红线）。
+    # 本仓库是纯 Go 项目（main.go 在根目录），没有前端覆盖率流水线。
+    - runner:
+        tags: cnb:arch:amd64
+      docker:
+        image: docker.cnb.cool/dtapp/golang:latest # 统一使用预构建的 CI 环境镜像
+        volumes:
+          - /root/.cache/go-build:copy-on-write # Go 构建缓存 - 加速编译
+          - /go/pkg/mod:copy-on-write # 仅缓存 Go 模块下载，避免覆盖镜像内预装的 /go/bin 工具
+      stages:
+        - name: 安装所有依赖
+          script: make deps-go
+        - name: 生成测试覆盖率
+          script: make cover-go # 产出 coverage.out
+        - name: 上报覆盖率（增量红线）
+          # https://docs.cnb.cool/zh/build/internal-steps/testing/coverage.html
+          type: testing:coverage
+          options:
+            key: go # 多报告数据键：以后接入其它语言时互不覆盖
+            name: Go Coverage # 徽章显示名，与 key 一对一对应
+            # diffLines: 50 # 增量覆盖率红线（%）：本次 PR 变更代码的覆盖率，低于此值阻断流水线
+            # lines: 10 # 全量覆盖率底线，与 push 流水线一致，防止总量被单个 PR 拉低
+            lang: go # golang 格式的覆盖率报告必须指定，否则计算有误差
+            pattern: 'coverage.out'
+            breakIfNoCoverage: false # 找不到覆盖率报告时仅缺失数据、不阻断流水线；低于 lines/diffLines 红线仍会拦截
+          exports:
+            lines: COVERAGE_LINES
+            diff_pct: COVERAGE_DIFF_PCT
+        - name: 输出覆盖率
+          script: 'echo "coverage: lines=$COVERAGE_LINES diff=$COVERAGE_DIFF_PCT"'

@@ -24,3 +24,8 @@ dtskills
 dtskills.exe
 dtskills.deb
 dtskills.rpm
+
+# 测试覆盖率
+coverage.out
+go-test-report.xml
+coverage.xml

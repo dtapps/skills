@@ -1,0 +1,20 @@
+version: 2
+# 本仓库是纯 Go CLI 项目：只有 Go 模块与 GitHub Actions 两类依赖。
+# 前端 / Docker 依赖不存在，故不配置 npm / docker 的扫描与私有 registry 凭据。
+updates:
+  # Go 依赖
+  - package-ecosystem: 'gomod'
+    directory: '/'
+    schedule:
+      interval: 'daily'
+    labels:
+      - 'dependencies'
+      - 'go'
+  # GitHub Actions 依赖（扫描 .github/workflows 下的第三方 action 版本）
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'daily'
+    labels:
+      - 'dependencies'
+      - 'github-actions'

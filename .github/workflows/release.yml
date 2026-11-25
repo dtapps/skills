@@ -1,0 +1,667 @@
+# 发布工作流
+#
+# 两种触发：手动填版本号；每天 UTC 00:00 定时构建 nightly 预发布。
+# 均用 GoReleaser 构建全平台二进制包（zip / tar.gz）与 Linux 系统包（deb / rpm / apk / Arch）并发布 GitHub Release，
+# 随后触发 CNB 的发布同步（secret 未配置则跳过），最后推送 ServerChan3 通知。
+#
+# ⚠️ CNB 是主平台（origin），不从 GitHub 搬产物：CNB 有自己的发布流水线
+# （.cnb/workflows/release.yml），从源码构建，产物与提交天然一致。
+# GitHub 发布成功后通过 CNB Open API 触发它的 api_trigger_release，只传 version，
+# 预发布仍由 CNB 侧看版本号后缀判定；两边各自构建同一个 tag 会出现「两份产物」
+# （构建时间戳不同），但这是各自从源码构建的既有口径，不做产物搬运。
+#
+# 版本号规则（实现见 scripts/ci/resolve-prerelease.sh，CNB 的 .cnb/workflows/release.yml 同口径）：
+#   v1.2.3          -> 正式版，Release 不勾选 prerelease
+#   v1.2.3-rc.1     -> 预发布（rc 渠道），Release 勾选 prerelease
+#   v1.2.3-beta.1   -> 预发布（beta 渠道），Release 勾选 prerelease
+#   v1.2.3-alpha.1  -> 预发布（alpha 渠道），Release 勾选 prerelease
+#   v1.2.3-nightly.20260101 -> 预发布（nightly 渠道），Release 勾选 prerelease
+#   nightly         -> 定时任务的默认值（手动填也可）：不是版本号，自动推导成
+#                      <最近正式版 + 1 个补丁>-nightly.<UTC 构建日期>，
+#                      例如最近正式版 v0.2.7 → tag v0.2.8-nightly.20261114。
+#                      每天一个 tag，GitHub 上只保留最近 3 个 nightly Release。
+#
+# 「是不是预发布」不接受人工勾选，只看版本号后缀：布尔输入会和版本号打架。
+#
+# https://github.com/actions/runner-images
+# https://github.com/actions/checkout
+# https://github.com/actions/cache
+# https://github.com/actions/upload-artifact
+# https://github.com/actions/download-artifact
+# https://github.com/softprops/action-gh-release
+# https://github.com/dtapps/golang
+name: Release
+on:
+  # 每天 UTC 00:00（北京时间 08:00）。
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号。预发布看后缀：1.2.3-rc.1 / 1.2.3-beta.1 / 1.2.3-alpha.1 / 1.2.3-nightly.20260101；填 nightly 自动生成带日期的 nightly 版本；无后缀即正式版'
+        required: true
+        type: string
+        default: 'nightly'
+      commit:
+        description: '要构建的提交（留空则使用默认分支最新提交）'
+        required: false
+        type: string
+        default: ''
+permissions:
+  contents: write
+  packages: read # 拉取 GHCR 上的 CI 镜像（公开镜像亦可匿名拉，写上以防仓库转私有）
+# 并发策略：同一分支的多次触发串行排队，绝不取消「正在运行」的旧运行。
+# cancel-in-progress: false 表示新运行进入 pending 等待，而非抢占/取消 in-progress。
+# queue: max 让同一 group 最多保留 100 个 pending，按进入等待的先后 FIFO 依次执行。
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+  queue: max
+# Makefile 用 CI 判断流水线环境；Actions 本身也会注入 CI=true，这里显式声明。
+env:
+  CI: 'true'
+jobs:
+  prepare:
+    runs-on: ubuntu-26.04
+    container:
+      image: ghcr.io/dtapps/golang:latest
+    outputs:
+      interior_version: ${{ steps.gen.outputs.interior_version }}
+      interior_version_bare: ${{ steps.gen.outputs.interior_version_bare }}
+      interior_release_title: ${{ steps.gen.outputs.interior_release_title }}
+      pre_release: ${{ steps.gen.outputs.pre_release }}
+      build_time: ${{ steps.gen.outputs.build_time }}
+      git_commit: ${{ steps.gen.outputs.git_commit }}
+      git_commit_full: ${{ steps.gen.outputs.git_commit_full }}
+    steps:
+      # commit 输入先校验再 checkout：把非法 ref 挡在前面，报错比 checkout 失败清楚。
+      - name: 校验 commit 输入
+        shell: bash
+        env:
+          INPUT_COMMIT: ${{ inputs.commit }}
+        run: |
+          set -euo pipefail
+          case "${INPUT_COMMIT}" in
+            '') echo "ℹ️ 未指定 commit，使用本次触发提交 ${GITHUB_SHA}" ;;
+            *[!0-9A-Za-z._/-]*) echo "❌ commit 含非法字符：只允许字母、数字、. _ / -" >&2; exit 1 ;;
+            *) echo "✅ 构建提交: ${INPUT_COMMIT}" ;;
+          esac
+      - name: 检出代码
+        uses: actions/checkout@v7
+        with:
+          # tag 历史必须完整：`nightly` 推导要取最近正式版 tag，
+          # changelog 的对比基准也靠 tag（浅克隆会让正文退化成「首次发布」）
+          fetch-depth: 0
+          ref: ${{ inputs.commit || github.sha }}
+      # 容器工作区是 runner 挂进来的 bind mount（属主是 runner 用户），容器内进程却是 root，
+      - name: 让容器内的 git 可用
+        shell: bash
+        run: |
+          git config --system --add safe.directory '*' 2>/dev/null || true
+          git config --global --add safe.directory "$GITHUB_WORKSPACE" 2>/dev/null || true
+
+          if git status --porcelain > /dev/null 2>&1; then
+            echo "✓ 容器内 git 可用，COMMIT=$(git rev-parse --short HEAD)"
+          else
+            echo "⚠️ 容器内 git 仍不可用。"
+          fi
+      - name: 解析版本号（预发布看后缀）
+        id: gen
+        shell: bash
+        env:
+          # 定时触发没有 inputs，等价于手动填 `nightly`；手动触发仍以输入为准。
+          VERSION: ${{ github.event_name == 'schedule' && 'nightly' || inputs.version }}
+        run: |
+          set -euo pipefail
+
+          # 归一化 / 格式校验 / 预发布判定只有一份实现，CNB 与 GitHub 共用
+          # shellcheck source=scripts/ci/resolve-prerelease.sh
+          . scripts/ci/resolve-prerelease.sh
+          # nightly 在这里展开成 v<最近正式版+1补丁>-nightly.<UTC日期>
+          resolve_version "${VERSION}"
+
+          echo "${PRE_NOTE}"
+
+          # 标题统一带项目名前缀（与 CNB 的 .cnb/workflows/release.yml 同口径，改名字两边一起改）
+          PROJECT_NAME="dtSkill"
+
+          # 预发布版本在标题上带个后缀，便于在 Release 列表里一眼区分
+          if [ "${PRERELEASE}" = "true" ]; then
+            RELEASE_TITLE="${PROJECT_NAME} ${TAG} (预发布)"
+          else
+            RELEASE_TITLE="${PROJECT_NAME} ${TAG}"
+          fi
+
+          {
+            echo "interior_version=${TAG}"
+            # 不带 v 前缀的版本号：通知与正文展示用（tag 本身仍带 v）
+            echo "interior_version_bare=${VERSION_BARE}"
+            echo "interior_release_title=${RELEASE_TITLE}"
+            echo "pre_release=${PRERELEASE}"
+            # 构建时间与提交号：通知里展示，且与 ldflags 注入的值一致
+            echo "build_time=$(bash scripts/get-build-time.sh)"
+            echo "git_commit=$(git rev-parse --short HEAD)"
+            echo "git_commit_full=$(git rev-parse HEAD)"
+          } >> "$GITHUB_OUTPUT"
+      # 发版前的版本号 / tag 校验放在 prepare：这些错误不会让构建失败，
+      # 但会发出「看起来成功、内容是错的」Release。前置到这里后，一旦校验不过，
+      # build / release 都不会启动（它们 needs: prepare），省掉整轮全平台编译。
+      - name: 校验版本号与 tag
+        shell: bash
+        env:
+          VERSION: ${{ steps.gen.outputs.interior_version }}
+          PRERELEASE: ${{ steps.gen.outputs.pre_release }}
+        run: |
+          set -euo pipefail
+          echo "版本号: ${VERSION}"
+
+          git fetch --tags --quiet --force || true
+          count=$(git tag -l 'v*' | wc -l | tr -d ' ')
+          echo "本地版本 tag: ${count} 个"
+
+          # tag 是否已存在：nightly 按天发布同一个 tag（同一天重跑/补发要能覆盖）；
+          # 其余渠道不允许重发（会把 tag 挪到新提交上，历史 Release 的对比基准跟着变）。
+          if git rev-parse -q --verify "refs/tags/${VERSION}" >/dev/null; then
+            case "${VERSION}" in
+              *-nightly.*)
+                echo "✅ ${VERSION} 是夜间构建，允许覆盖同名 Release"
+                ;;
+              *)
+                echo "❌ tag ${VERSION} 已存在，不能重复发布"
+                echo "   已有指向: $(git rev-parse --short "${VERSION}")"
+                echo "   当前 HEAD: $(git rev-parse --short HEAD)"
+                exit 1
+                ;;
+            esac
+          else
+            echo "✅ tag ${VERSION} 不存在，可以发布"
+          fi
+
+          if [ "${PRERELEASE}" = "false" ]; then
+            # 只认严格的三段式版本 tag：点分隔的预发布 tag 不能当「上一个正式版」比。
+            latest=$(git tag -l 'v*' | grep -E '^[vV]?[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)
+            if [ -n "$latest" ] && [ "$(printf '%s\n%s\n' "$latest" "${VERSION}" | sort -V | tail -n 1)" != "${VERSION}" ]; then
+              echo "❌ 版本号 ${VERSION} 比已有的正式版 ${latest} 旧"
+              exit 1
+            fi
+            echo "✅ 比上一个正式版 ${latest:-（无）} 新"
+          fi
+  # 构建全平台二进制并压缩（linux/windows/darwin × amd64/arm64）。
+  # 纯 Go 项目，没有前端依赖与前端构建步骤。
+  build:
+    needs: prepare
+    runs-on: ubuntu-26.04
+    container:
+      image: ghcr.io/dtapps/golang:latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v7
+        with:
+          # ⚠️ 必须带上 ref：commit 输入的语义是「构建这个提交」，不是「构建最新代码」。
+          ref: ${{ inputs.commit || github.sha }}
+          fetch-depth: 0
+      - name: 让容器内的 git 可用
+        shell: bash
+        run: |
+          git config --system --add safe.directory '*' 2>/dev/null || true
+          git config --global --add safe.directory "$GITHUB_WORKSPACE" 2>/dev/null || true
+
+          if git status --porcelain > /dev/null 2>&1; then
+            echo "✓ 容器内 git 可用，COMMIT=$(git rev-parse --short HEAD)"
+          else
+            echo "⚠️ 容器内 git 仍不可用。"
+          fi
+      - name: 设置 Go 工具链目录
+        shell: bash
+        run: |
+          echo "GO_PATH_DIR=/go" >> "$GITHUB_ENV"
+          echo "GO_BIN_DIR=/go/bin" >> "$GITHUB_ENV"
+      - name: 缓存 Go module
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.GO_PATH_DIR }}/pkg/mod
+          key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-mod-
+      - name: 缓存 Go build 缓存
+        uses: actions/cache@v6
+        with:
+          path: ${{ format('{0}/.cache/go-build', env.HOME) }}
+          key: ${{ runner.os }}-go-build-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-build-
+      - name: 安装全部 Go 依赖
+        run: make deps-go
+      # GoReleaser 统一负责六平台交叉编译、Linux 系统包（deb/rpm/apk/Arch）与 SHA256SUMS。
+      - name: 构建所有平台产物
+        shell: bash
+        env:
+          VERSION: ${{ needs.prepare.outputs.interior_version }}
+        run: VERSION="${VERSION}" make goreleaser-release
+      - name: 上传产物
+        uses: actions/upload-artifact@v7
+        with:
+          name: dtskills-release
+          # 只挑可发布的包与校验文件：dist/ 里还有 metadata.json / artifacts.json
+          # 与各平台构建目录，整目录上传会混进 Release 附件。
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/*.deb
+            dist/*.rpm
+            dist/*.apk
+            dist/*.pkg.tar.zst
+            dist/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 1
+  # 构建完成后，发布 GitHub Release
+  release:
+    needs: [prepare, build]
+    runs-on: ubuntu-26.04
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v7
+        with:
+          # 需要完整 tag 历史，才能算出「上一个 tag」并生成 changelog
+          fetch-depth: 0
+          # ⚠️ 必须带上 ref：commit 输入的语义是「发布这个提交」，不是「发布最新代码」。
+          ref: ${{ inputs.commit || github.sha }}
+      - name: 下载所有产物
+        uses: actions/download-artifact@v8
+        with:
+          name: dtskills-release
+          path: release
+      # 正文格式只有一份实现（scripts/ci/render-release-body.sh），CNB 那份也调用它。
+      # 下载表的「说明」列来自 scripts/ci/describe-artifact.sh。
+      - name: 生成 Release 正文
+        shell: bash
+        env:
+          VERSION: ${{ needs.prepare.outputs.interior_version }}
+          PRERELEASE: ${{ needs.prepare.outputs.pre_release }}
+          REPO_URL: https://github.com/${{ github.repository }}
+          COMMIT_SHA: ${{ inputs.commit || github.sha }}
+          ARTIFACT_DIR: release
+          OUT_FILE: release_body.md
+        run: |
+          set -euo pipefail
+
+          # 下载基址在脚本里拼，不写进 env：整条 URL 太长，yamlfmt 会把表达式折行
+          DL_BASE="${REPO_URL}/releases/download/${VERSION}"
+          STABLE_URL="${REPO_URL}/releases/latest"
+          export DL_BASE STABLE_URL
+
+          # 附件说明与正文渲染共用 scripts/ci/describe-artifact.sh：先 source 进来
+          # 逐个打印说明，便于发版前在日志里核对表格里即将出现的文案。
+          # shellcheck source=scripts/ci/describe-artifact.sh
+          . scripts/ci/describe-artifact.sh
+          for f in "${ARTIFACT_DIR}"/*; do
+            [ -e "${f}" ] || continue
+            [ -d "${f}" ] && continue
+            fname="$(basename "${f}")"
+            [ "${fname}" = 'SHA256SUMS' ] && continue
+            printf '  %s | %s\n' "${fname}" "$(describe_artifact "${fname}")"
+          done
+
+          # changelog：按渠道选对比基准（rc 对 rc、beta 对 beta、nightly 对 nightly、正式版对正式版；
+          # 首次发某渠道则回退到上一个正式版）。实现见 scripts/ci/release-changelog.sh。
+          # GitHub 的提交路径是 /commit/<sha>，和 CNB 的 /-/commit 不同，前缀显式传
+          CHANGELOG=$(COMMIT_URL="${REPO_URL}/commit" sh scripts/ci/release-changelog.sh "${VERSION}")
+          export CHANGELOG
+
+          sh scripts/ci/render-release-body.sh
+      # nightly 同日重跑时同名 tag 已存在：删掉旧 Release 与 tag 再重建，
+      # 避免旧平台的附件堆在 Release 上。其它渠道正常情况下 tag 是新的，这里为空操作。
+      - name: 删除同名旧 Release（如果存在）
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.prepare.outputs.interior_version }}
+        run: sh scripts/ci/delete-release.sh --platform github --tag "${VERSION}" || true
+      - name: 发布 Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.prepare.outputs.interior_version }}
+          name: ${{ needs.prepare.outputs.interior_release_title }}
+          draft: false
+          # 版本号带 rc/beta/alpha/nightly 才勾选预发布，正式版不勾
+          prerelease: ${{ needs.prepare.outputs.pre_release }}
+          body_path: release_body.md
+          files: release/*
+      # 夜间构建每天一个 tag，只保留最近 3 个 Release（含 tag），更早的删掉。
+      # CNB 的发布流水线在收到触发后各自做同样清理；GitHub 这边的删除不会传播过去。
+      - name: 清理过期 nightly Release（保留最近 3 个）
+        if: ${{ contains(needs.prepare.outputs.interior_version, '-nightly.') }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: sh scripts/ci/delete-release.sh --platform github --keep 3
+  # GitHub 侧的发版公告：Release 发布成功后，在仓库 Discussions 里开一条讨论。
+  # 正文与 CNB 侧同一份脚本渲染（scripts/ci/render-announcement-body.sh），
+  # 下载表指向自家平台（GitHub 的下载表来自 GitHub Release 正文）。
+  # 用 Discussions 而不是 Issue：公告是对外的版本说明，讨论区更贴切；
+  # 仓库要在 Settings → General 里打开 Discussions，否则接口 404 —— 只告警跳过，不影响发布。
+  announce:
+    needs: [release, prepare]
+    runs-on: ubuntu-26.04
+    # nightly 每天一个 tag：每天都开一条讨论会把讨论区刷成日报。
+    if: ${{ !contains(needs.prepare.outputs.interior_version, 'nightly') }}
+    permissions:
+      contents: read
+      discussions: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      VERSION: ${{ needs.prepare.outputs.interior_version }}
+      PRERELEASE: ${{ needs.prepare.outputs.pre_release }}
+      REPO_URL: https://github.com/${{ github.repository }}
+      COMMIT_SHA: ${{ needs.prepare.outputs.git_commit_full }}
+      ANNOUNCEMENT_ENABLED: 'true'
+      ANNOUNCEMENT_DISCUSSION_CATEGORY: 'General'
+      ANNOUNCEMENT_DISCUSSION_CATEGORY_ID: ''
+      # 配一个带 Discussions 读写权限的 PAT 覆盖 GITHUB_TOKEN；没配就退回 GITHUB_TOKEN。
+      ANNOUNCEMENT_TOKEN: ${{ secrets.ANNOUNCEMENT_TOKEN || secrets.GITHUB_TOKEN }}
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.commit || github.sha }}
+          fetch-depth: 0
+      - name: 生成公告正文
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # 正文与 Release 正文同源：直接取已发布 Release 的正文，不重新渲染
+          gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${VERSION}" --jq '.body // ""' > release_body.md
+          if [ ! -s release_body.md ]; then
+            echo "::warning::取不到 Release 正文，跳过发版公告"
+            exit 0
+          fi
+
+          export VERSION PRERELEASE
+          export RELEASE_BODY="release_body.md"
+          export OUT_FILE="announcement_body.md"
+          export TITLE_FILE="announcement-title.txt"
+          export CNB_WEB_BASE="https://cnb.cool/dtapp/skills/-"
+          export GITHUB_WEB="${REPO_URL}"
+          # 提交链接指向 GitHub 的提交页（CNB 侧不传这个变量，脚本会用 CNB 的地址拼）
+          export COMMIT_URL="${REPO_URL}/commit"
+          export STABLE_URL="${REPO_URL}/releases/latest"
+          export COMMIT_SHA="${COMMIT_SHA}"
+
+          # 渲染失败只告警并结束这一步：这里跑在 Release 发布之后，不该让流水线变红。
+          if ! sh scripts/ci/render-announcement-body.sh > /dev/null; then
+            echo "::warning::生成公告正文失败，跳过发版公告"
+            exit 0
+          fi
+          echo "公告正文已生成：${OUT_FILE}"
+      # 用官方 actions/github-script 调 Discussions API（Discussions 没有专门的官方 action）。
+      # ⚠️ 统一走 github.request / github.graphql 的路由写法，不用 github.rest.discussions.*。
+      - name: 发布公告到 Discussions
+        uses: actions/github-script@v9
+        env:
+          TITLE_FILE: announcement-title.txt
+          BODY_FILE: announcement_body.md
+        with:
+          github-token: ${{ env.ANNOUNCEMENT_TOKEN }}
+          retries: 2
+          script: |
+            const fs = require('fs')
+            const owner = context.repo.owner
+            const repo = context.repo.repo
+
+            // 标题与正文都从文件读：脚本注入的坑（把不可信内容拼进 JS）就绕开了。
+            let title
+            let body
+            try {
+              title = fs.readFileSync(process.env.TITLE_FILE, 'utf8').trim()
+              body = fs.readFileSync(process.env.BODY_FILE, 'utf8')
+            } catch (err) {
+              core.warning(`读不到公告标题或正文（${err.message}），跳过发版公告`)
+              return 'skipped'
+            }
+
+            // 开关：只有 true / 1 / yes / on 才发，其余值跳过。
+            const enabled = String(process.env.ANNOUNCEMENT_ENABLED || '').toLowerCase()
+            if (!['1', 'true', 'yes', 'on'].includes(enabled)) {
+              core.warning(`发版公告已关闭（ANNOUNCEMENT_ENABLED=${process.env.ANNOUNCEMENT_ENABLED}）`)
+              return 'skipped'
+            }
+
+            const wantCategory = process.env.ANNOUNCEMENT_DISCUSSION_CATEGORY || 'General'
+            const wantCategoryId = process.env.ANNOUNCEMENT_DISCUSSION_CATEGORY_ID || ''
+
+            try {
+              // GitHub 没有仓库 Discussions 的 REST 端点，列分类、查讨论、建讨论一律走 GraphQL。
+              const repoQuery = `
+                query ($owner: String!, $repo: String!) {
+                  repository(owner: $owner, name: $repo) {
+                    id
+                    discussionCategories(first: 25) { nodes { id name } }
+                  }
+                }`
+              const { repository } = await github.graphql(repoQuery, { owner, repo })
+              const repositoryId = repository.id
+
+              let categoryId = wantCategoryId
+              if (categoryId) {
+                core.info(`使用配置的讨论分类 node id=${categoryId}（跳过分类查询）`)
+              } else {
+                const categories = repository.discussionCategories.nodes
+                const picked = categories.find((c) => c.name === wantCategory) || categories[0]
+                if (!picked) {
+                  core.warning('没有可用的讨论分类，跳过发版公告')
+                  return 'skipped'
+                }
+                categoryId = picked.id
+                core.info(`讨论分类：${picked.name}（${categoryId}）`)
+              }
+
+              // Discussion 建出来删不掉，所以先按标题找出所有同版本讨论，
+              // 每一条都更新成同一份内容（关掉会让读者以为版本被撤了，不关）。
+              const listQuery = `
+                query ($owner: String!, $repo: String!, $cursor: String) {
+                  repository(owner: $owner, name: $repo) {
+                    discussions(first: 100, after: $cursor) {
+                      nodes { id number title }
+                      pageInfo { hasNextPage endCursor }
+                    }
+                  }
+                }`
+              const matches = []
+              let cursor = null
+              for (;;) {
+                const res = await github.graphql(listQuery, { owner, repo, cursor })
+                const page = res.repository.discussions
+                for (const d of page.nodes) {
+                  if (d.title === title) matches.push(d)
+                }
+                if (!page.pageInfo.hasNextPage) break
+                cursor = page.pageInfo.endCursor
+              }
+
+              const updateMutation = `
+                mutation ($id: ID!, $title: String!, $body: String!) {
+                  updateDiscussion(input: { discussionId: $id, title: $title, body: $body }) {
+                    discussion { number }
+                  }
+                }`
+
+              if (matches.length > 0) {
+                const [keep, ...others] = matches
+                await github.graphql(updateMutation, { id: keep.id, title, body })
+                core.info(`已更新发版公告讨论 #${keep.number}`)
+                for (const other of others) {
+                  await github.graphql(updateMutation, { id: other.id, title, body })
+                  core.info(`已同步更新同版本讨论 #${other.number}`)
+                }
+                return `updated:${keep.number}`
+              }
+
+              const createMutation = `
+                mutation ($repositoryId: ID!, $categoryId: ID!, $title: String!, $body: String!) {
+                  createDiscussion(input: { repositoryId: $repositoryId, categoryId: $categoryId, title: $title, body: $body }) {
+                    discussion { number url }
+                  }
+                }`
+              const created = await github.graphql(createMutation, { repositoryId, categoryId, title, body })
+              core.info(`已创建发版公告讨论 #${created.createDiscussion.discussion.number}`)
+              return `created:${created.createDiscussion.discussion.number}`
+            } catch (err) {
+              const hint = /not found|forbidden|permission/i.test(err.message || '')
+                ? '（多半是令牌没有 Discussions 权限：fine-grained PAT 需勾 Discussions: Read and write，然后配到 secret ANNOUNCEMENT_TOKEN）'
+                : ''
+              core.warning(`发版公告失败${hint}，请手工补一条：${err.message}`)
+              return 'failed'
+            }
+  # GitHub Release 发布成功后，调用 CNB Open API 触发主平台的 api_trigger_release。
+  # CNB 仍从源码构建，不从 GitHub 搬产物；只传 version，预发布由 CNB 侧按后缀判定。
+  # secret：SYNC_CNB_TOKEN —— CNB 个人访问令牌（repo 读写），未配置则跳过。
+  sync-cnb:
+    needs: [release, prepare]
+    runs-on: ubuntu-26.04
+    outputs:
+      status: ${{ steps.status.outputs.status }}
+    env:
+      CNB_TOKEN: ${{ secrets.SYNC_CNB_TOKEN }}
+      VERSION: ${{ needs.prepare.outputs.interior_version }}
+      PRERELEASE: ${{ needs.prepare.outputs.pre_release }}
+    steps:
+      - name: 触发 CNB 发布流水线
+        id: trigger
+        if: ${{ env.CNB_TOKEN != '' }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          API="https://api.cnb.cool"
+          REPO="dtapp/skills"   # CNB 是 dtapp（不带 s），GitHub 是 dtapps
+          BRANCH="master"       # api_trigger_release 只配在 master 下
+          EVENT="api_trigger_release"
+          if [ "${PRERELEASE}" = "true" ]; then
+            TITLE="GitHub 预发布同步 ${VERSION}"
+          else
+            TITLE="GitHub 正式发版同步 ${VERSION}"
+          fi
+          echo "触发 CNB 流水线: ${REPO} / ${EVENT} (branch=${BRANCH}, version=${VERSION})"
+
+          # 只传 version：预发布标记由 resolve-prerelease.sh 从后缀推导。
+          # 不传 commit：CNB 侧会校验填写的 commit 等于本次触发提交，两个远端 HEAD 不一定对得上。
+          HTTP=$(curl -s -o /tmp/cnb_trigger.json -w "%{http_code}" -X POST \
+            -H "Authorization: Bearer ${CNB_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -H "Accept: application/vnd.cnb.api+json" \
+            -d "$(jq -n \
+              --arg branch "${BRANCH}" \
+              --arg event "${EVENT}" \
+              --arg title "${TITLE}" \
+              --arg version "${VERSION}" \
+              '{branch: $branch, event: $event, title: $title, env: {version: $version}}')" \
+            "${API}/${REPO}/-/build/start")
+
+          echo "CNB build/start 响应 HTTP=${HTTP}"
+          cat /tmp/cnb_trigger.json || true
+          if [ "$HTTP" -lt 200 ] || [ "$HTTP" -ge 300 ]; then
+            echo "status=failed" >> "$GITHUB_OUTPUT"
+            echo "::warning::触发 CNB 流水线失败（HTTP=${HTTP}），不影响 GitHub Release"
+          else
+            echo "status=triggered" >> "$GITHUB_OUTPUT"
+            echo "✓ 已请求 CNB 执行发布流水线（异步，进度看 CNB 流水线页面）"
+          fi
+      - name: 记录同步状态
+        id: status
+        if: always()
+        shell: bash
+        run: |
+          if [ "${{ steps.trigger.outcome }}" = "skipped" ]; then
+            echo "status=skipped" >> "$GITHUB_OUTPUT"
+          elif [ -n "${{ steps.trigger.outputs.status }}" ]; then
+            echo "status=${{ steps.trigger.outputs.status }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=failed" >> "$GITHUB_OUTPUT"
+          fi
+  # 构建 / 发布 / 同步全部完成后，通过 ServerChan3（方糖）推送 webhook 通知。
+  # 需配置 secret SERVERCHAN_SENDKEY；未配置则跳过通知。
+  notify:
+    needs: [sync-cnb, release, prepare]
+    runs-on: ubuntu-26.04
+    # always()：某个同步 job 万一失败，通知仍要发出去——
+    # 「发布成功但某个平台没同步上」正是最需要通知的场景。
+    if: ${{ always() && needs.release.result == 'success' }}
+    env:
+      SERVERCHAN_SENDKEY: ${{ secrets.SERVERCHAN_SENDKEY }}
+      PRERELEASE: ${{ needs.prepare.outputs.pre_release }}
+    steps:
+      - name: 发送 ServerChan3 通知
+        if: ${{ env.SERVERCHAN_SENDKEY != '' }}
+        env:
+          SENDKEY: ${{ secrets.SERVERCHAN_SENDKEY }}
+        shell: bash
+        run: |
+          # 支持两种 ServerChan3 key：
+          #   - 以 sctp 开头（带 uid 的 sendkey）→ https://<uid>.push.ft07.com/send/<key>.send
+          #   - 其他（SCT 转发 key）            → https://sctapi.ftqq.com/<key>.send
+          SENDKEY_VAL="$SENDKEY"
+          if [[ "$SENDKEY_VAL" =~ ^sctp([0-9]+)t ]]; then
+            URL="https://${BASH_REMATCH[1]}.push.ft07.com/send/${SENDKEY_VAL}.send"
+          else
+            URL="https://sctapi.ftqq.com/${SENDKEY_VAL}.send"
+          fi
+          # URL 含 sendkey（密钥），禁止整体打印，仅打印域名避免日志泄露密钥
+          echo "推送 ServerChan3 通知: ${URL%%/*}"
+
+          VERSION="${{ needs.prepare.outputs.interior_version_bare }}"
+          TAG="${{ needs.prepare.outputs.interior_version }}"
+          BUILD_TIME="${{ needs.prepare.outputs.build_time }}"
+          # BUILD_TIME 是 UTC ISO8601（...Z）：显示 UTC+8 必须换时区，
+          # `date -d "$BT" -u` 只是按 UTC 格式化同一时刻，不能再标成 UTC+8。
+          BUILD_TIME_CN=$(TZ=Asia/Shanghai date -d "${BUILD_TIME}" +'%Y-%m-%d %H:%M:%S' 2>/dev/null || true)
+          if [ -z "${BUILD_TIME_CN}" ]; then
+            BUILD_TIME_CN="${BUILD_TIME}"
+          else
+            BUILD_TIME_CN="${BUILD_TIME_CN} (UTC+8)"
+          fi
+          REPO="${{ github.repository }}"
+
+          GH_RELEASE_URL="https://github.com/${REPO}/releases/tag/${TAG}"
+          CNB_RELEASE_URL="https://cnb.cool/dtapp/skills/-/releases/tag/${TAG}"
+
+          # 同步状态 → 中文标签
+          sync_state() {
+            case "$1" in
+              triggered) printf '✅ 已触发' ;;
+              skipped) printf '⏭ 未配置（跳过）' ;;
+              failed) printf '❌ 触发失败' ;;
+              *) printf '❓ 未知' ;;
+            esac
+          }
+
+          TITLE="dtSkill ${TAG} 构建完成"
+          TAGS="dtSkill|stable"
+          if [ "${PRERELEASE}" = "true" ]; then
+            TITLE="dtSkill ${TAG} (预发布) 构建完成"
+            TAGS="dtSkill|prerelease"
+          fi
+          DESP="**版本**: \`${VERSION}\`  "$'\n'
+          DESP="${DESP}**构建时间**: ${BUILD_TIME_CN}  "$'\n'
+          DESP="${DESP}**Git 提交**: ${{ needs.prepare.outputs.git_commit }}  "$'\n'
+          DESP="${DESP}**GitHub Release**: [${TAG}](${GH_RELEASE_URL})  "$'\n'
+          DESP="${DESP}**CNB Release**: [${TAG}](${CNB_RELEASE_URL})  "$'\n'
+          DESP="${DESP}**平台触发**: CNB $(sync_state "${{ needs['sync-cnb'].outputs.status }}")"
+
+          echo "推送 ServerChan3 通知: ${TITLE}"
+          HTTP=$(curl -s -o /tmp/sc3.json -w "%{http_code}" -X POST \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n \
+              --arg title "$TITLE" \
+              --arg desp "$DESP" \
+              --arg tags "$TAGS" \
+              '{title: $title, desp: $desp, tags: $tags}')" \
+            "$URL")
+
+          echo "ServerChan3 响应 HTTP=${HTTP}"
+          cat /tmp/sc3.json
+          if [ "$HTTP" != "200" ]; then
+            echo "::warning::ServerChan3 通知发送失败（HTTP=${HTTP}）"
+          else
+            echo "✓ 已发送 ServerChan3 通知"
+          fi

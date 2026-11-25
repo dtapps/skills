@@ -49,11 +49,15 @@ func (ecm *ExternalConfigManager) Load() error {
 		return fmt.Errorf("环境变量 %s 未设置", ecm.envVar)
 	}
 
-	// 检查目录是否存在
+	// 检查目录是否存在。路径来自用户显式设置的环境变量，仅用于本地读取配置，
+	// 不是外部不可信输入；Stat 只做存在性与类型检查，不做写入。
 	dirPath = filepath.Clean(dirPath)
-	info, err := os.Stat(dirPath)
-	if os.IsNotExist(err) {
-		return fmt.Errorf("配置目录不存在: %s", dirPath)
+	info, err := os.Stat(dirPath) //nolint:gosec // 路径来自用户显式配置，仅 Stat 检查目录
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("配置目录不存在: %s", dirPath)
+		}
+		return fmt.Errorf("检查配置目录失败: %s: %w", dirPath, err)
 	}
 	if !info.IsDir() {
 		return fmt.Errorf("配置路径不是目录: %s", dirPath)

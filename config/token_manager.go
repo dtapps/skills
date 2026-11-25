@@ -72,11 +72,15 @@ func (tm *TokenManager) LoadFromDir(dirPath string) error {
 		return nil
 	}
 
-	// 检查目录是否存在
+	// 检查目录是否存在。路径来自调用方显式传入（或用户设置的环境变量），
+	// 仅用于本地读取 Token 配置，不是外部不可信输入；Stat 只检查存在性与类型。
 	dirPath = filepath.Clean(dirPath)
-	info, err := os.Stat(dirPath)
-	if os.IsNotExist(err) {
-		return fmt.Errorf("配置目录不存在: %s", dirPath)
+	info, err := os.Stat(dirPath) //nolint:gosec // 路径来自显式配置，仅 Stat 检查目录
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("配置目录不存在: %s", dirPath)
+		}
+		return fmt.Errorf("检查配置目录失败: %s: %w", dirPath, err)
 	}
 	if !info.IsDir() {
 		return fmt.Errorf("配置路径不是目录: %s", dirPath)
@@ -127,9 +131,10 @@ func (tm *TokenManager) loadTokenFile(path string) error {
 		return nil
 	}
 
-	// 尝试解析为单个 Token
+	// 尝试解析为单个 Token。json.Unmarshal 会静默忽略未知字段，所以必须校验 token 非空：
+	// 否则 Map 格式 {"key":"value"} 会被误识别成一个字段全空的 Token，兼容分支永远走不到。
 	var singleToken Token
-	if err := json.Unmarshal(data, &singleToken); err == nil {
+	if err := json.Unmarshal(data, &singleToken); err == nil && singleToken.Token != "" {
 		tm.tokens = append(tm.tokens, singleToken)
 		return nil
 	}

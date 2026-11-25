@@ -1,0 +1,83 @@
+# Codecov 配置（放在 .github/ 下，Codecov 自动读取）
+# 官方文档：https://docs.codecov.com/docs/codecov-yaml
+#
+# 本仓库是纯 Go CLI 项目（main.go 在根目录，业务在各子包），只用 go 一份报告，
+# 由 GitHub Actions 的 .github/workflows/codecov.yml 上传。
+# 硬性门禁仍由 CNB 的 testing:coverage（.cnb/workflows/*-coverage.yml）负责；
+# Codecov 状态默认 informational 不阻塞，只做趋势 / PR 评论 / 徽章。
+coverage:
+  range: '0...100'
+  round: down
+  precision: 2
+  status:
+    project:
+      default:
+        informational: true
+        target: auto
+        threshold: 5%
+      go:
+        informational: true
+        flags: go
+        target: auto
+        threshold: 5%
+    patch:
+      default:
+        informational: true
+        target: auto
+        threshold: 5%
+  flags:
+    go:
+      paths:
+        - '**'
+      carryforward: true
+  ignore:
+    - '**/*_test.go'
+    - 'coverage.out'
+    - 'coverage.xml'
+    - 'dist/**'
+  comment:
+    layout: 'reach,diff,flags,files'
+    behavior: default
+    require_changes: false
+    hide_project_coverage: false
+# Components：在同一份覆盖率数据里按目录切块，面板名用真实包名。
+# 状态沿用「只展示不阻塞」策略（informational），硬门禁由 CNB 负责。
+component_management:
+  default_rules:
+    statuses:
+      - type: project
+        informational: true
+        target: auto
+        threshold: 5%
+  individual_components:
+    - component_id: go-entry
+      name: Go · 命令行入口
+      paths:
+        - main.go
+    - component_id: go-cmd
+      name: Go · 命令层
+      paths:
+        - cmd/**
+    - component_id: go-skills
+      name: Go · 技能实现
+      paths:
+        - skills/**
+    - component_id: go-generator
+      name: Go · 生成器
+      paths:
+        - generator/**
+    - component_id: go-ui
+      name: Go · 交互界面
+      paths:
+        - ui/**
+        - ansi/**
+    - component_id: go-updater
+      name: Go · 升级与统计
+      paths:
+        - updater/**
+        - stats/**
+    - component_id: go-foundation
+      name: Go · 配置与类型
+      paths:
+        - config/**
+        - types/**

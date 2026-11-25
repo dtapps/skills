@@ -1,5 +1,25 @@
-# 默认目标
-.DEFAULT_GOAL := generate
+# 设置默认目标
+.DEFAULT_GOAL := setup
+
+# 环境变量优先级高于 .env：include 的赋值会覆盖环境值，先暂存一份
+ifeq ($(origin GIT_REMOTE),environment)
+    GIT_REMOTE_ENV := $(GIT_REMOTE)
+endif
+
+# 加载 .env 文件（如果存在）
+ifneq (,$(wildcard ./.env))
+    include .env
+    export
+endif
+
+ifneq ($(GIT_REMOTE_ENV),)
+    GIT_REMOTE := $(GIT_REMOTE_ENV)
+endif
+
+# 同步/推送目标远程，逗号分隔：GIT_REMOTE=origin,github,gitlab
+# 可通过 .env / 环境变量 / 命令行覆盖，未配置时默认 origin。
+GIT_REMOTE ?= origin
+export GIT_REMOTE
 
 #####################
 ## 变量定义
@@ -13,6 +33,29 @@ BUILD_DIR := dist
 
 # 工作目录（配置文件和统计数据都存储在这里）
 DTSKILLS_WORK_DIR = .
+
+# 一键设置项目（默认执行）
+setup: deps
+	@echo "🎉 Project setup completed!"
+
+# 安装全部依赖
+.PHONY: deps
+deps: deps-go
+	@echo "[Deps] 完成。"
+
+# 安装全部 Go 依赖
+.PHONY: deps-go
+deps-go:
+	@echo "[Deps] 安装 Go 模块依赖..."
+	go mod tidy
+	go mod download
+
+# 更新全部 Go 依赖
+.PHONY: update-deps-go
+update-deps-go:
+	@echo "[Deps] 更新 Go 模块依赖..."
+	go get -u ./...
+	go mod tidy
 
 #####################
 ## 开发工具
@@ -394,437 +437,232 @@ crawler-weather-data:
 	DTSKILLS_WORK_DIR=$(DTSKILLS_WORK_DIR) go run . crawler weather-data --city "$(CITY)" --date "$(DATE)" $(MINIFY)
 
 #####################
-## 检查相关
+## 构建 / 打包 相关
 #####################
 
-# 安装依赖
-.PHONY: deps
-deps:
-	@echo "[依赖] 安装/更新依赖..."
-	go version
-	go get -u ./...
-	go mod tidy
-	go mod verify
-	@echo "✓ 依赖安装完成"
+# GoReleaser 版本（流水线与本地共用，升级只改这里）
+GORELEASER_VERSION ?= v2.20.2
+
+# goreleaser 可执行文件（不在 PATH 时回退到 $HOME/go/bin）
+GORELEASER ?= $(shell command -v goreleaser 2>/dev/null || echo $(HOME)/go/bin/goreleaser)
+
+# goreleaser 构建时注入的版本名：流水线在 tag 创建前构建，用 GORELEASER_CURRENT_TAG 覆盖当前 tag；
+# 本仓库的 tag 可能被 git describe 识别成 refs/tags/...，这里统一剥掉前缀。
+GORELEASER_ENV = GORELEASER_CURRENT_TAG=$(patsubst refs/tags/%,%,$(VERSION))
+
+# 同时编译/链接的目标数。默认按 CPU 数并发，CI 容器内存有限时容易在链接阶段被
+# OOM Killer 杀掉（`link: signal: killed`）。本地默认 1，CI 环境（CI=true）默认 2，
+# 两者都可显式覆盖：make goreleaser-snapshot GORELEASER_PARALLELISM=4
+GORELEASER_PARALLELISM ?= $(if $(filter true,$(CI)),2,1)
+
+# 非 CI（本地）快照只编当前平台：`--single-target` 是 `goreleaser build` 的参数，
+# `goreleaser release` 没有（传了会直接报 unknown flag），所以本地走 build，只产出
+# 当前平台的三个二进制，不生成压缩包 / Linux 系统包；CI 走 release 出全平台产物。
+# 本地要全平台产物（含系统包）：CI=true make goreleaser-snapshot
+GORELEASER_SNAPSHOT_CMD ?= $(if $(filter true,$(CI)),release --snapshot,build --snapshot --single-target)
+
+# 安装固定版本的 goreleaser（已存在则跳过）
+.PHONY: goreleaser-install
+goreleaser-install:
+	@if ! $(GORELEASER) --version >/dev/null 2>&1; then \
+		echo "安装 goreleaser $(GORELEASER_VERSION) → $(dir $(GORELEASER))"; \
+		GOBIN=$(dir $(GORELEASER)) go install github.com/goreleaser/goreleaser/v2@$(GORELEASER_VERSION); \
+	fi
+
+# 校验 .goreleaser.yaml
+.PHONY: goreleaser-check
+goreleaser-check: goreleaser-install
+	$(GORELEASER) check
+
+# 快照构建（无需 tag）：产物在 dist/。本地非 CI 只编当前平台。
+.PHONY: goreleaser-snapshot
+goreleaser-snapshot: goreleaser-install
+	$(GORELEASER) $(GORELEASER_SNAPSHOT_CMD) --clean --parallelism $(GORELEASER_PARALLELISM)
+
+# 发布构建：产物在 dist/。
+# GORELEASER_CURRENT_TAG 只提供版本名，validate 仍要求 tag 指向当前提交，
+# 因此必须 --skip=validate，否则会报 "git tag ... was not made against commit"。
+.PHONY: goreleaser-release
+goreleaser-release: goreleaser-install
+	$(GORELEASER_ENV) $(GORELEASER) release --clean --skip=validate --parallelism $(GORELEASER_PARALLELISM)
+
+#####################
+## 格式化 相关
+#####################
+
+# 格式化后端文件
+.PHONY: format-go
+format-go:
+	@echo "[Format] 格式化后端文件 (GO)..."
+	gofmt -w -s .
+	go fmt ./...
+	go fix ./...
+
+# 格式化 YAML 文件
+.PHONY: format-yaml
+format-yaml:
+	@bash scripts/format.sh yaml
+
+# 格式化严格 JSON 文件（gojq）
+.PHONY: format-json
+format-json:
+	@bash scripts/format.sh json
+
+# 格式化 JSON5 文件（jsonfmt，保留注释 / 无引号 key / 尾逗号）
+.PHONY: format-json5
+format-json5:
+	@bash scripts/format.sh json5
+
+# 格式化 SQL 文件
+.PHONY: format-sql
+format-sql:
+	@bash scripts/format.sh sql
+
+# 格式化 Markdown 文件
+.PHONY: format-markdown
+format-markdown:
+	@bash scripts/format.sh markdown
+
+# 格式化 Dockerfile 文件
+.PHONY: format-docker
+format-docker:
+	@bash scripts/format.sh docker
+
+# 格式化 Shell 脚本
+.PHONY: format-shell
+format-shell:
+	@bash scripts/format.sh shell
+
+# 格式化/修复项目
+.PHONY: format
+format: format-go format-yaml format-json format-json5 format-sql format-markdown format-docker format-shell
+
+#####################
+## 检查 / 测试 相关
+#####################
+
+# 统一定义构建命令
+# CGO_ENABLED=0: 禁用 CGO，实现完全静态链接
+# CGO_ENABLED=1: 启用 CGO，实现动态链接
+LINT_ENV = CGO_ENABLED=0
 
 # 定义 Lint 过程中需要激活的 Go Build Tags
 LINT_TAGS = goolm,stdjson
 
-check:
-	@echo "[Check] 自动语法转换与格式化..."
-	go fix ./...
-	go fmt ./...
-	@echo "[Check] 运行 golangci-lint 深度扫描 (Tags: $(LINT_TAGS))..."
-	@echo "  -> Linux 平台 (amd64)"
-	GOOS=linux GOARCH=amd64 golangci-lint fmt
-	GOOS=linux GOARCH=amd64 golangci-lint run --build-tags $(LINT_TAGS)
-	GOOS=linux GOARCH=amd64 golangci-lint run --fix --build-tags $(LINT_TAGS)
-	
-	@echo "  -> macOS 平台 (arm64)"
-	GOOS=darwin GOARCH=arm64 golangci-lint fmt
-	GOOS=darwin GOARCH=arm64 golangci-lint run --build-tags $(LINT_TAGS)
-	GOOS=darwin GOARCH=arm64 golangci-lint run --fix --build-tags $(LINT_TAGS)
-	
-	@echo "  -> Windows 平台 (amd64)"
-	GOOS=windows GOARCH=amd64 golangci-lint fmt
-	GOOS=windows GOARCH=amd64 golangci-lint run --build-tags $(LINT_TAGS)
-	GOOS=windows GOARCH=amd64 golangci-lint run --fix --build-tags $(LINT_TAGS)
+# Lint 扫描的目标平台，默认当前平台；CI 通过 LINT_PLATFORMS=... 覆盖为全平台
+LINT_PLATFORMS ?= $(shell go env GOOS)/$(shell go env GOARCH)
+
+# 运行 Go 静态检查
+# -printf=false 关闭 printf 分析，避免 i18n.T() 作日志 format 时触发错误
+.PHONY: check-go-vet
+check-go-vet:
+	@echo "[Check] -> 运行 Go vet 静态检查 (Tags: $(LINT_TAGS))..."
+	$(LINT_ENV) go vet -tags=$(LINT_TAGS) -printf=false ./...
+
+# 运行 Go lint 扫描
+.PHONY: check-go-lint
+check-go-lint:
+	@echo "[Check] -> 运行 Go lint 扫描 (平台: $(LINT_PLATFORMS), Tags: $(LINT_TAGS))..."
+	@for os_arch in $(LINT_PLATFORMS); do \
+		os=$$(echo $$os_arch | cut -d'/' -f1); \
+		arch=$$(echo $$os_arch | cut -d'/' -f2); \
+		echo "  -> $$os 平台 ($$arch)"; \
+		$(LINT_ENV) GOOS=$$os GOARCH=$$arch golangci-lint fmt; \
+		$(LINT_ENV) GOOS=$$os GOARCH=$$arch golangci-lint run --build-tags $(LINT_TAGS); \
+	done
+
+# 运行 Go fix 问题
+.PHONY: check-go-fix
+check-go-fix:
+	@echo "[Check] -> 运行 Go fix 问题 (Tags: $(LINT_TAGS))..."
+	$(LINT_ENV) golangci-lint run --fix --build-tags $(LINT_TAGS)
+
+# 运行 Go 单元测试
+.PHONY: check-go-test
+check-go-test:
+	@echo "[Check] -> 运行 Go 单元测试 (Tags: $(LINT_TAGS))..."
+	$(LINT_ENV) go test -tags=$(LINT_TAGS) $(GO_COVER_TEST_FLAGS) $(GO_COVER_SCAN)
+
+# 运行 Go 依赖漏洞检查
+.PHONY: check-go-vuln
+check-go-vuln:
+	@echo "[Check] -> 运行 Go 依赖漏洞检查 (Tags: $(LINT_TAGS))..."
+	$(LINT_ENV) govulncheck -tags=$(LINT_TAGS) -scan=package -show verbose ./...
+
+# 检查后端项目
+.PHONY: check-go
+check-go: check-go-vet check-go-lint check-go-fix check-go-test check-go-vuln 
+
+# 检查/测试项目
+.PHONY: check
+check: check-go 
 
 #####################
-## 构建相关
+## 更新 / 拉取 / 推送 相关
 #####################
 
-# 功能开关（设置为 1 开启，0 关闭）
-ENABLE_UPX ?= 1
-ENABLE_ARCHIVE ?= 1
+# 按 GIT_REMOTE 顺序先全部拉取合并，再统一推送（保留本地未提交改动）
+.PHONY: sync
+sync:
+	@IFS=,; for r in $$GIT_REMOTE; do \
+		git fetch "$$r" && git merge --ff-only "$$r/master" || exit 1; \
+	done
+	@IFS=,; for r in $$GIT_REMOTE; do git push "$$r" HEAD || exit 1; done
+	@echo "同步完成！"
 
-# 检测是否存在 upx
-UPX = $(shell command -v upx 2> /dev/null)
-# 检测是否存在 tar 和 zip
-TAR = $(shell command -v tar 2> /dev/null)
-ZIP = $(shell command -v zip 2> /dev/null)
+# 推送到所有远程仓库
+.PHONY: push
+push:
+	@IFS=,; for r in $$GIT_REMOTE; do git push "$$r" HEAD || exit 1; done
+	@echo "推送完成！"
 
-# 定义压缩逻辑：参数 $(1) 为文件路径
-define compress_file
-	@if [ "$(ENABLE_UPX)" = "1" ] && [ "$(UPX)" ]; then \
-		FILE_SIZE=$$(stat -c%s "$(1)" 2>/dev/null || stat -f%z "$(1)"); \
-		ORIG_SIZE_H=$$(du -h "$(1)" | cut -f1); \
-		\
-		if [ $$FILE_SIZE -lt 10485760 ]; then \
-			LEVEL="--best"; \
-			DESC="小文件-极限压缩"; \
-		elif [ $$FILE_SIZE -lt 52428800 ]; then \
-			LEVEL="-6"; \
-			DESC="中等文件-平衡模式"; \
-		else \
-			LEVEL="-1"; \
-			DESC="大文件-极速模式"; \
-		fi; \
-		\
-		echo "  📦 正在以 [$$DESC ($$LEVEL)] 压缩..."; \
-		ERR_MSG=$$($(UPX) $$LEVEL "$(1)" 2>&1); \
-		\
-		if [ $$? -eq 0 ]; then \
-			NEW_SIZE_H=$$(du -h "$(1)" | cut -f1); \
-			echo "  ⚡ UPX 压缩完成: $(1) [ $${ORIG_SIZE_H} -> $${NEW_SIZE_H} ]"; \
-		else \
-			echo "  ⚠️  UPX 压缩跳过: $(1) ($$ERR_MSG)"; \
-		fi \
-	elif [ "$(ENABLE_UPX)" = "1" ] && [ ! "$(UPX)" ]; then \
-		echo "  ⏭️  UPX 未安装，跳过压缩"; \
-	elif [ "$(ENABLE_UPX)" = "0" ]; then \
-		echo "  ⏭️  UPX 已禁用"; \
-	fi
-endef
-
-# 定义打包压缩逻辑：参数 $(1) 为源文件路径, $(2) 为目标平台 (如 linux-amd64)
-# Linux/macOS 使用 tar.gz, Windows 使用 zip
-define archive_binary
-	@if [ "$(ENABLE_ARCHIVE)" = "1" ]; then \
-		SOURCE_FILE=$(1); \
-		PLATFORM=$(2); \
-		ARCHIVE_NAME="$(BUILD_DIR)/$(BINARY_NAME)-$${PLATFORM}"; \
-		\
-		if echo "$${PLATFORM}" | grep -q "windows"; then \
-			if [ "$(ZIP)" ]; then \
-				ARCHIVE_NAME="$${ARCHIVE_NAME}.zip"; \
-				echo "  📦 正在打包 Windows 压缩包: $${ARCHIVE_NAME}..."; \
-				cd $(BUILD_DIR) && zip -q "$$(basename $${ARCHIVE_NAME})" "$$(basename $${SOURCE_FILE})"; \
-				cd ..; \
-				ARCHIVE_SIZE=$$(du -h "$${ARCHIVE_NAME}" | cut -f1); \
-				BIN_SIZE=$$(du -h "$${SOURCE_FILE}" | cut -f1); \
-				echo "  ✓ 打包完成: $${ARCHIVE_NAME} [ 二进制: $${BIN_SIZE} -> 压缩包: $${ARCHIVE_SIZE} ]"; \
-			else \
-				echo "  ⚠️  zip 未安装，无法打包 Windows 压缩包"; \
-			fi \
-		else \
-			if [ "$(TAR)" ]; then \
-				ARCHIVE_NAME="$${ARCHIVE_NAME}.tar.gz"; \
-				echo "  📦 正在打包 Unix 压缩包: $${ARCHIVE_NAME}..."; \
-				tar -czf "$${ARCHIVE_NAME}" -C $(BUILD_DIR) "$$(basename $${SOURCE_FILE})"; \
-				ARCHIVE_SIZE=$$(du -h "$${ARCHIVE_NAME}" | cut -f1); \
-				BIN_SIZE=$$(du -h "$${SOURCE_FILE}" | cut -f1); \
-				echo "  ✓ 打包完成: $${ARCHIVE_NAME} [ 二进制: $${BIN_SIZE} -> 压缩包: $${ARCHIVE_SIZE} ]"; \
-			else \
-				echo "  ⚠️  tar 未安装，无法打包 Unix 压缩包"; \
-			fi \
-		fi; \
-	elif [ "$(ENABLE_ARCHIVE)" = "0" ]; then \
-		echo "  ⏭️  压缩包已禁用"; \
-	fi
-endef
-
-# 定义清理二进制文件逻辑：如果存在对应压缩包则删除二进制
-# 参数 $(1) 为二进制文件路径, $(2) 为目标平台 (如 linux-amd64)
-define clean_binary
-	@SOURCE_FILE=$(1); \
-	PLATFORM=$(2); \
-	if echo "$${PLATFORM}" | grep -q "windows"; then \
-		ARCHIVE_NAME="$(BUILD_DIR)/$(BINARY_NAME)-$${PLATFORM}.zip"; \
-	else \
-		ARCHIVE_NAME="$(BUILD_DIR)/$(BINARY_NAME)-$${PLATFORM}.tar.gz"; \
-	fi; \
-	if [ -f "$${ARCHIVE_NAME}" ] && [ -f "$${SOURCE_FILE}" ]; then \
-		rm -f "$${SOURCE_FILE}"; \
-		echo "  🗑️  已清理二进制: $${SOURCE_FILE} (存在 $${ARCHIVE_NAME})"; \
-	else \
-		echo "  ⏭️  未找到压缩包或二进制，跳过: $${SOURCE_FILE}"; \
-	fi
-endef
-
-# 版本信息（支持外部传入）
-VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
-COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-BUILDTIME ?= $(shell date -u '+%Y-%m-%d %H:%M:%S UTC')
-
-# ldflags 模板
-# -s -w: 移除符号表和调试信息，减小体积
-# -buildid=: 移除构建指纹
-LDFLAGS = -s -w -buildid= \
-    -X 'main.Version=$(VERSION)' \
-    -X 'main.GitCommit=$(COMMIT)' \
-    -X 'main.BuildTime=$(BUILDTIME)' \
-    -X 'github.com/dtapp/skills/types.ProjectName=$(BINARY_NAME)'
-
-# 统一定义构建命令
-# CGO_ENABLED=0: 禁用 CGO，实现完全静态链接
-# -trimpath: 移除本地路径，保护隐私
-BUILD_CMD = CGO_ENABLED=0 go build -trimpath -ldflags="$(LDFLAGS)"
+# 强制推送到所有远程仓库（忽略冲突）
+.PHONY: push-force
+push-force:
+	@IFS=,; for r in $$GIT_REMOTE; do git push --force "$$r" HEAD || exit 1; done
+	@echo "强制推送完成！"
 
 #####################
-## 默认目标
+## 测试覆盖率 相关
 #####################
 
-.PHONY: all
-all: build
+# ── 清单配置：新增目录 / 生成代码只改这里，下面的命令不散落路径 ──────────────
+# Go 扫描范围：本仓库没有 internal/，入口 main.go 在根目录、业务在各子包，
+# 全量扫 ./... 才不会漏掉主包（覆盖率分母要包含命令行入口）。
+GO_COVER_SCAN = ./...
+# Go 排除目录（包路径前缀，空格分隔）：当前没有 ent 之类的生成代码目录，留空即可。
+# 以后引入生成代码时在这里按 /path 列出，下面的命令不用改。
+GO_COVER_EXCLUDE =
+# 关闭 vet 检查，加快测试与覆盖率统计速度
+GO_COVER_TEST_FLAGS = -vet=off
 
-#####################
-## 本地构建
-#####################
+# -coverpkg 只收「扫描范围内且不在排除列表」的包。用 $$(...) 让 go list 在配方执行时才跑，
+# 避免任何 make 目标都触发一次包扫描；grep 参数由排除列表生成，加目录不用改命令。
+GO_COVER_EXCLUDE_ARGS = $(foreach d,$(GO_COVER_EXCLUDE),-e '$(d)')
+ifeq ($(strip $(GO_COVER_EXCLUDE)),)
+GO_COVER_PKGS = $$(go list $(GO_COVER_SCAN) | paste -sd, -)
+else
+GO_COVER_PKGS = $$(go list $(GO_COVER_SCAN) | grep -v $(GO_COVER_EXCLUDE_ARGS) | paste -sd, -)
+endif
+GO_COVER_ARGS = $(GO_COVER_TEST_FLAGS) -coverpkg=$(GO_COVER_PKGS) -coverprofile=coverage.out $(GO_COVER_SCAN)
 
-# 构建当前平台
-.PHONY: build
-build:
-	@echo "[构建] 本地平台..."
-	$(BUILD_CMD) -o $(BINARY_NAME) .
-	@echo "✓ 构建完成: ./$(BINARY_NAME)"
-	@echo "  版本: $(VERSION)"
-	@echo "  提交: $(COMMIT)"
-	@echo "  时间: $(BUILDTIME)"
+# Go 覆盖率（golang 格式）→ coverage.out；CNB 的 testing:coverage 与 Codecov 都读这份
+.PHONY: cover-go
+cover-go:
+	@echo "[Coverage] Go 测试覆盖率 → coverage.out"
+	go test $(GO_COVER_ARGS)
+	go tool cover -func=coverage.out
 
-# 清理构建产物
-.PHONY: clean
-clean:
-	@echo "[Clean] 清理构建目录..."
-	@rm -rf $(BUILD_DIR)
-	@rm -f $(BINARY_NAME)
-	@mkdir -p $(BUILD_DIR)
-	@echo "✓ 清理完成"
+# Go 覆盖率 + JUnit（Codecov Test Analytics 用），依赖 CI 镜像预装的 gotestsum
+.PHONY: junit-go
+junit-go:
+	@echo "[Coverage] Go 测试 → coverage.out + go-test-report.xml"
+	gotestsum --junitfile go-test-report.xml -- $(GO_COVER_ARGS)
+	go tool cover -func=coverage.out
 
-#####################
-## 多平台构建
-#####################
-
-# 构建所有平台
-.PHONY: build-all build-linux-amd64 build-linux-arm64 build-linux-arm-v7 build-linux-mipsle build-linux-riscv64 build-linux-loong64 build-linux-386 build-linux-arm-v6 build-windows-amd64 build-windows-arm64 build-windows-386 build-darwin-amd64 build-darwin-arm64
-build-all: clean \
-	build-linux-amd64 \
-	build-linux-arm64 \
-	build-linux-arm-v7 \
-	build-linux-mipsle \
-	build-linux-riscv64 \
-	build-linux-loong64 \
-	build-linux-386 \
-	build-linux-arm-v6 \
-	build-windows-amd64 \
-	build-windows-arm64 \
-	build-windows-386 \
-	build-darwin-amd64 \
-	build-darwin-arm64
-
-build-linux-amd64:
-	@echo ""
-	@echo "┌────────────────────────────────────────────────────────────"
-	@echo "│ [构建] Linux AMD64 (通用服务器/PC x86_64)"
-	@echo "└────────────────────────────────────────────────────────────"
-	GOOS=linux GOARCH=amd64 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-linux-amd64 .
-	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-amd64,linux-amd64)
-
-build-linux-arm64:
-	@echo ""
-	@echo "┌────────────────────────────────────────────────────────────"
-	@echo "│ [构建] Linux ARM64 (树莓派4/5, AWS Graviton, 苹果M系Linux虚拟机)"
-	@echo "└────────────────────────────────────────────────────────────"
-	GOOS=linux GOARCH=arm64 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 .
-	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-arm64,linux-arm64)
-
-build-linux-arm-v7:
-	@echo ""
-	@echo "┌────────────────────────────────────────────────────────────"
-	@echo "│ [构建] Linux ARM v7 (32位, 旧款树莓派, 大部分NAS, 嵌入式盒子)"
-	@echo "└────────────────────────────────────────────────────────────"
-	GOOS=linux GOARCH=arm GOARM=7 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-linux-arm-v7 .
-	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-arm-v7,linux-arm-v7)
-
-build-linux-mipsle:
-	@echo ""
-	@echo "┌────────────────────────────────────────────────────────────"
-	@echo "│ [构建] Linux MIPS LE (小端序, 常见于 OpenWrt 路由器/光猫)"
-	@echo "└────────────────────────────────────────────────────────────"
-	GOOS=linux GOARCH=mipsle GOMIPS=softfloat $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-linux-mipsle .
-	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-mipsle,linux-mipsle)
-
-build-linux-riscv64:
-	@echo ""
-	@echo "┌────────────────────────────────────────────────────────────"
-	@echo "│ [构建] Linux RISC-V 64位 (新兴开源指令集架构)"
-	@echo "└────────────────────────────────────────────────────────────"
-	GOOS=linux GOARCH=riscv64 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-linux-riscv64 .
-	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-riscv64,linux-riscv64)
-
-build-linux-loong64:
-	@echo ""
-	@echo "┌────────────────────────────────────────────────────────────"
-	@echo "│ [构建] Linux Loong64 (龙芯新版架构)"
-	@echo "└────────────────────────────────────────────────────────────"
-	GOOS=linux GOARCH=loong64 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-linux-loong64 .
-	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-loong64,linux-loong64)
-
-build-linux-386:
-	@echo ""
-	@echo "┌────────────────────────────────────────────────────────────"
-	@echo "│ [构建] Linux 386 (32位 x86)"
-	@echo "└────────────────────────────────────────────────────────────"
-	GOOS=linux GOARCH=386 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-linux-386 .
-	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-386,linux-386)
-
-build-linux-arm-v6:
-	@echo ""
-	@echo "┌────────────────────────────────────────────────────────────"
-	@echo "│ [构建] Linux ARM v6 (树莓派 Zero/1)"
-	@echo "└────────────────────────────────────────────────────────────"
-	GOOS=linux GOARCH=arm GOARM=6 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-linux-arm-v6 .
-	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-arm-v6,linux-arm-v6)
-
-build-windows-amd64:
-	@echo ""
-	@echo "┌────────────────────────────────────────────────────────────"
-	@echo "│ [构建] Windows AMD64 (主流 Windows PC/服务器)"
-	@echo "└────────────────────────────────────────────────────────────"
-	GOOS=windows GOARCH=amd64 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe .
-	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe,windows-amd64)
-
-build-windows-arm64:
-	@echo ""
-	@echo "┌────────────────────────────────────────────────────────────"
-	@echo "│ [构建] Windows ARM64 (Surface Pro X, 骁龙笔记本等)"
-	@echo "└────────────────────────────────────────────────────────────"
-	GOOS=windows GOARCH=arm64 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-windows-arm64.exe .
-	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-windows-arm64.exe,windows-arm64)
-
-build-windows-386:
-	@echo ""
-	@echo "┌────────────────────────────────────────────────────────────"
-	@echo "│ [构建] Windows 386 (32位 Windows PC)"
-	@echo "└────────────────────────────────────────────────────────────"
-	GOOS=windows GOARCH=386 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-windows-386.exe .
-	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-windows-386.exe,windows-386)
-
-build-darwin-amd64:
-	@echo ""
-	@echo "┌────────────────────────────────────────────────────────────"
-	@echo "│ [构建] macOS Intel (旧款 Macbook/iMac)"
-	@echo "└────────────────────────────────────────────────────────────"
-	GOOS=darwin GOARCH=amd64 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-darwin-amd64 .
-	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-darwin-amd64,darwin-amd64)
-
-build-darwin-arm64:
-	@echo ""
-	@echo "┌────────────────────────────────────────────────────────────"
-	@echo "│ [构建] macOS Apple Silicon (M1/M2/M3 芯片)"
-	@echo "└────────────────────────────────────────────────────────────"
-	GOOS=darwin GOARCH=arm64 $(BUILD_CMD) -o ./$(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 .
-	$(call archive_binary,./$(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64,darwin-arm64)
-
-# 清理所有已压缩的二进制文件（上传前执行）
-.PHONY: clean-binaries
-clean-binaries:
-	@echo "[清理] 删除已压缩的二进制文件..."
-	$(call clean_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-amd64,linux-amd64)
-	$(call clean_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-arm64,linux-arm64)
-	$(call clean_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-arm-v7,linux-arm-v7)
-	$(call clean_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-mipsle,linux-mipsle)
-	$(call clean_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-riscv64,linux-riscv64)
-	$(call clean_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-loong64,linux-loong64)
-	$(call clean_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-386,linux-386)
-	$(call clean_binary,./$(BUILD_DIR)/$(BINARY_NAME)-linux-arm-v6,linux-arm-v6)
-	$(call clean_binary,./$(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe,windows-amd64)
-	$(call clean_binary,./$(BUILD_DIR)/$(BINARY_NAME)-windows-arm64.exe,windows-arm64)
-	$(call clean_binary,./$(BUILD_DIR)/$(BINARY_NAME)-windows-386.exe,windows-386)
-	$(call clean_binary,./$(BUILD_DIR)/$(BINARY_NAME)-darwin-amd64,darwin-amd64)
-	$(call clean_binary,./$(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64,darwin-arm64)
-	@echo "✓ 清理完成"
-
-#####################
-## 打包 (Linux deb/rpm)
-#####################
-
-# 生成 nfpm 临时配置文件（替换变量）
-define generate_nfpm_config
-	@sed -e 's|$${ARCH}|$(1)|g' -e 's|$${VERSION}|$(VERSION)|g' .nfpm.yaml > .nfpm-$(1).yaml
-endef
-
-# 打包 Linux deb
-.PHONY: package-linux-deb
-package-linux-deb: build-linux-amd64
-	@echo ""
-	@echo "┌────────────────────────────────────────────────────────────"
-	@echo "│ [打包] 创建 Linux deb 包..."
-	@echo "└────────────────────────────────────────────────────────────"
-	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-linux-amd64)
-	$(call generate_nfpm_config,amd64)
-	nfpm package -p deb -f .nfpm-amd64.yaml -t $(BUILD_DIR)/dtskills_amd64.deb
-	@rm -f .nfpm-amd64.yaml
-	@echo "✓ deb 包已创建: $(BUILD_DIR)/dtskills_amd64.deb"
-
-# 打包 Linux rpm
-.PHONY: package-linux-rpm
-package-linux-rpm: build-linux-amd64
-	@echo ""
-	@echo "┌────────────────────────────────────────────────────────────"
-	@echo "│ [打包] 创建 Linux rpm 包..."
-	@echo "└────────────────────────────────────────────────────────────"
-	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-linux-amd64)
-	@cp $(BUILD_DIR)/dtskills-linux-amd64 $(BUILD_DIR)/dtskills-linux-x86_64 2>/dev/null || true
-	$(call generate_nfpm_config,x86_64)
-	nfpm package -p rpm -f .nfpm-x86_64.yaml -t $(BUILD_DIR)/dtskills.x86_64.rpm
-	@rm -f .nfpm-x86_64.yaml $(BUILD_DIR)/dtskills-linux-x86_64
-	@echo "✓ rpm 包已创建: $(BUILD_DIR)/dtskills.x86_64.rpm"
-
-# 打包所有 Linu deb/rpm 包
-.PHONY: package-linux-all
-package-linux-all: package-linux-deb package-linux-rpm
-	@echo ""
-	@echo "╔════════════════════════════════════════════════════════════"
-	@echo "║ ✓ 所有 Linux deb/rpm 包已创建"
-	@echo "╚════════════════════════════════════════════════════════════"
-
-#####################
-## 打包 (Windows MSI)
-#####################
-
-# 确保版本号是纯数字，例如从 v1.0.0 变成 1.0.0
-MSI_VERSION=$(shell echo $(VERSION) | sed 's/v//')
-
-# 打包 Windows MSI (AMD64)
-.PHONY: package-win-amd64
-package-win-amd64: build-windows-amd64
-	@echo ""
-	@echo "┌────────────────────────────────────────────────────────────"
-	@echo "│ [打包] 创建 Windows MSI 包 (AMD64)..."
-	@echo "└────────────────────────────────────────────────────────────"
-	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe)
-	@sed -e 's|$${VERSION}|$(MSI_VERSION)|g' \
-	     -e 's|Source="dtskills.exe"|Source="$(BUILD_DIR)/dtskills-windows-amd64.exe"|g' \
-	     installer.wxs > $(BUILD_DIR)/installer-amd64.wxs
-	wixl -v -a x64 $(BUILD_DIR)/installer-amd64.wxs -o $(BUILD_DIR)/dtskills_amd64.msi
-	@rm -f $(BUILD_DIR)/installer-amd64.wxs
-	@echo "✓ MSI 包已创建: $(BUILD_DIR)/dtskills_amd64.msi"
-
-# 打包 Windows MSI (ARM64)
-.PHONY: package-win-arm64
-package-win-arm64: build-windows-arm64
-	@echo ""
-	@echo "┌────────────────────────────────────────────────────────────"
-	@echo "│ [打包] 创建 Windows MSI 包 (ARM64)..."
-	@echo "└────────────────────────────────────────────────────────────"
-	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-windows-arm64.exe)
-	@sed -e 's|$${VERSION}|$(MSI_VERSION)|g' \
-	     -e 's|Source="dtskills.exe"|Source="$(BUILD_DIR)/dtskills-windows-arm64.exe"|g' \
-	     installer.wxs > $(BUILD_DIR)/installer-arm64.wxs
-	wixl -v -a arm64 $(BUILD_DIR)/installer-arm64.wxs -o $(BUILD_DIR)/dtskills_arm64.msi
-	@rm -f $(BUILD_DIR)/installer-arm64.wxs
-	@echo "✓ MSI 包已创建: $(BUILD_DIR)/dtskills_arm64.msi"
-
-# 打包 Windows MSI (386)
-.PHONY: package-win-386
-package-win-386: build-windows-386
-	@echo ""
-	@echo "┌────────────────────────────────────────────────────────────"
-	@echo "│ [打包] 创建 Windows MSI 包 (386)..."
-	@echo "└────────────────────────────────────────────────────────────"
-	$(call compress_file,./$(BUILD_DIR)/$(BINARY_NAME)-windows-386.exe)
-	@sed -e 's|$${VERSION}|$(MSI_VERSION)|g' \
-	     -e 's|Source="dtskills.exe"|Source="$(BUILD_DIR)/dtskills-windows-386.exe"|g' \
-	     installer.wxs > $(BUILD_DIR)/installer-386.wxs
-	wixl -v -a x86 $(BUILD_DIR)/installer-386.wxs -o $(BUILD_DIR)/dtskills_386.msi
-	@rm -f $(BUILD_DIR)/installer-386.wxs
-	@echo "✓ MSI 包已创建: $(BUILD_DIR)/dtskills_386.msi"
-
-# 打包所有 Windows MSI 包
-.PHONY: package-win-all
-package-win-all: package-win-amd64 package-win-386
-	@echo ""
-	@echo "╔════════════════════════════════════════════════════════════"
-	@echo "║ ✓ 所有 Windows MSI 包已创建"
-	@echo "╚════════════════════════════════════════════════════════════"
+# Coveralls 的 golang parser 会把包前缀压成 basename，改用 Cobertura 保留完整 filename 路径。
+# gocover-cobertura 由统一 CI 镜像预装；-strict 让「包/模块信息缺失被静默跳过」直接失败。
+.PHONY: cover-go-cobertura
+cover-go-cobertura: cover-go
+	@echo "[Coverage] coverage.out → coverage.xml（Cobertura）"
+	gocover-cobertura -by-files -strict < coverage.out > coverage.xml

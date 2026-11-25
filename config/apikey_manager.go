@@ -93,6 +93,13 @@ func (m *APIKeyManager) GetRandom() string {
 	if len(m.keys) == 0 {
 		return ""
 	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	// 支持直接用结构体字面量构造（测试与部分调用方），此时 random 未初始化。
+	if m.random == nil {
+		//nolint:gosec // 用于 API Key 随机选择，不需要加密安全级别
+		m.random = rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64()))
+	}
 	return m.keys[m.random.IntN(len(m.keys))]
 }
 

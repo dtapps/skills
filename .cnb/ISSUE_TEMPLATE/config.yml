@@ -1,0 +1,23 @@
+# Issue 模板选择页配置
+#
+# 规则：本仓库 Issue 仅用于发版公告（由发布流水线 scripts/ci/render-announcement-body.sh
+# 生成正文、标题固定为 `[发版公告] dtSkill <版本号>`），所以关闭空白 Issue
+# （blank_issues_enabled: false），避免人工提的问题混进公告列表——
+# .cnb/workflows/announcement-cleanup.yml 会按「发版公告」标签收敛这些 Issue。
+#
+# 代价：关掉空白 Issue 后用户就没有主动提 Issue 的入口了，所以下面用 contact_links
+# 把文档、安全反馈渠道、Release 列表显式放到选择页上。
+blank_issues_enabled: false
+contact_links:
+  - name: 使用帮助与文档
+    url: https://cnb.cool/dtapp/skills/-/blob/master/README.md
+    about: 功能、安装、常用命令与配置说明
+  - name: 命令行补全文档
+    url: https://cnb.cool/dtapp/skills/-/blob/master/docs/completion.md
+    about: Shell 补全的安装与使用说明
+  - name: 历史发布记录
+    url: https://cnb.cool/dtapp/skills/-/releases
+    about: 查看已发布版本的 Release 正文、下载附件与 SHA256SUMS
+  - name: 安全反馈（不要开公开 Issue）
+    url: https://github.com/dtapps/skills/security/advisories/new
+    about: 发现漏洞请私下提交 Security Advisory；不要在 Issue 里贴 API Key、Token 或利用细节

@@ -44,16 +44,19 @@ sudo dtskills completion bash > /etc/bash_completion.d/dtskills
 **补全不生效？**
 
 1. 检查补全脚本是否正确生成：
+
    ```bash
    cat /etc/bash_completion.d/dtskills
    ```
 
 2. 确保当前 shell 是 Bash：
+
    ```bash
    echo $SHELL  # 应输出 /bin/bash
    ```
 
 3. 重新加载配置：
+
    ```bash
    source ~/.bashrc
    ```
@@ -67,12 +70,14 @@ macOS 新版默认使用 Zsh。
 ### 首次安装
 
 **使用 oh-my-zsh**：
+
 ```bash
 mkdir -p ~/.oh-my-zsh/completions
 dtskills completion zsh > ~/.oh-my-zsh/completions/_dtskills
 ```
 
 **使用 Homebrew**：
+
 ```bash
 mkdir -p $(brew --prefix)/share/zsh/site-functions
 dtskills completion zsh > $(brew --prefix)/share/zsh/site-functions/_dtskills
@@ -89,6 +94,7 @@ dtskills completion zsh > ~/.oh-my-zsh/completions/_dtskills
 ```
 
 或（如果使用 Homebrew）：
+
 ```bash
 dtskills completion zsh > $(brew --prefix)/share/zsh/site-functions/_dtskills
 ```
@@ -100,16 +106,19 @@ dtskills completion zsh > $(brew --prefix)/share/zsh/site-functions/_dtskills
 **补全不生效？**
 
 1. 检查补全脚本是否正确生成：
+
    ```bash
    cat ~/.oh-my-zsh/completions/_dtskills
    ```
 
 2. 确保当前 shell 是 Zsh：
+
    ```bash
    echo $SHELL  # 应输出 /bin/zsh
    ```
 
 3. 重新加载配置：
+
    ```bash
    source ~/.zshrc
    ```
@@ -147,16 +156,19 @@ dtskills completion powershell > $PROFILE
 **补全不生效？**
 
 1. 检查配置文件路径：
+
    ```powershell
    echo $PROFILE
    ```
 
 2. 检查补全脚本是否正确生成：
+
    ```powershell
    Get-Content $PROFILE
    ```
 
 3. 确保执行策略允许运行脚本：
+
    ```powershell
    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
    ```

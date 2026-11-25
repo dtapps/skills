@@ -1,0 +1,114 @@
+# GoReleaser 配置：CNB / GitHub 发布流水线的构建与打包入口。
+#
+# 流水线只负责构建到 dist/，再由各平台自己的步骤创建 Release 并上传附件
+# （见 release.disable）；Release 正文、预发布判定、nightly 清理仍由现有脚本负责。
+#
+# 用法：
+#   make goreleaser-check      # 校验本文件
+#   make goreleaser-snapshot   # 快照构建（无需 tag）
+#   make goreleaser-release    # 发布构建（传 VERSION=<tag>，由 Makefile 设置 GORELEASER_CURRENT_TAG）
+#
+# 产物（dist/）：
+#   dtskills-linux-{amd64,arm64}.tar.gz
+#   dtskills-darwin-{amd64,arm64}.tar.gz
+#   dtskills-windows-{amd64,arm64}.zip
+#   dtskills-linux-{amd64,arm64}.{deb,rpm,apk,pkg.tar.zst}（Linux 系统包）
+#   SHA256SUMS
+version: 2
+project_name: dtskills
+# 快照版本固定成干净的 semver，避免本地 git describe 结果污染产物文件名。
+snapshot:
+  version_template: '0.0.0-SNAPSHOT-{{ .ShortCommit }}'
+# 默认文件名是 dtskills_<version>_checksums.txt，统一成发布约定用的 SHA256SUMS。
+checksum:
+  name_template: SHA256SUMS
+# 纯 Go 项目：没有前端内嵌资源，不需要 before hook（本仓库也没有 goreleaser-prepare）。
+builds:
+  - &build
+    # 压缩包用：包内二进制保留 dtskills-<os>-<arch>（Windows 自动追加 .exe）。
+    id: dtskills
+    main: .
+    binary: 'dtskills-{{ .Os }}-{{ .Arch }}'
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+      # 容器内 git 可能因 dubious ownership 不可用，不依赖 VCS 盖章。
+      - -buildvcs=false
+    # 与 Makefile 的 LDFLAGS 同口径：版本号 / 提交 / 时间注入 main 包，
+    # 项目名注入 types.ProjectName（自升级与目录名都读它）。
+    ldflags:
+      - -s -w
+      - -buildid=
+      - -X 'main.Version={{ if .IsSnapshot }}v{{ .Version }}{{ else }}{{ trimprefix .Tag "refs/tags/" }}{{ end }}'
+      - -X 'main.GitCommit={{ .ShortCommit }}'
+      - -X 'main.BuildTime={{ time "2006-01-02 15:04:05 UTC" }}'
+      - -X 'github.com/dtapp/skills/types.ProjectName=dtskills'
+  # Linux 系统包用：nfpm 会把构建产物原样安装到 /usr/bin/<二进制名>，
+  # 沿用 dtskills-<os>-<arch> 会装出 /usr/bin/dtskills-linux-amd64，所以这里必须叫 dtskills。
+  # 其余字段走锚点复用，改 ldflags / flags 不用改两处。
+  - !!merge <<: *build
+    id: dtskills-pkg
+    binary: dtskills
+    goos:
+      - linux
+# 更新内容由 scripts/ci/release-changelog.sh 按渠道生成，不交给 GoReleaser：
+# 发布构建跑在 tag 创建之前，内置 git changelog 取不到当前 tag，且分组 / 截断 / 提交链接
+# 也满足不了现有正文要求。
+# changelog:
+#   disable: true
+archives:
+  - id: dtskills
+    ids:
+      - dtskills
+    formats:
+      - tar.gz
+    # Windows 产物用 .zip，与 README 的下载口径保持一致。
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    name_template: '{{ .ProjectName }}-{{ .Os }}-{{ .Arch }}'
+    # 默认会额外塞入 LICENSE / README / CHANGELOG；`files: []` 仍会走默认值，
+    # 官方推荐用不匹配任何文件的 glob 关掉（压缩包只放二进制）。
+    files:
+      - none*
+# Linux 系统包：deb / rpm / apk / Arch Linux（.pkg.tar.zst）。
+# 只消费 dtskills-pkg（linux-only），压缩包里仍保留 dtskills-<os>-<arch> 的原文件名。
+nfpms:
+  - id: dtskills
+    package_name: dtskills
+    # 与压缩包共用「项目-os-架构」命名：下载正文按同一套规则解析平台/架构
+    # （版本号在包元数据里，不需要出现在文件名）。
+    file_name_template: '{{ .PackageName }}-{{ .Os }}-{{ .Arch }}'
+    ids:
+      - dtskills-pkg
+    vendor: dtapp
+    homepage: https://cnb.cool/dtapp/skills
+    maintainer: liguangchun <13553695467@139.com>
+    description: |-
+      基于 Go 的 Skills 管理工具：交互式生成 SKILL.md 技能包，
+      并提供搜索 / 天气 / 爬虫等技能命令、配置管理与自升级。
+    license: MIT
+    section: default
+    priority: optional
+    release: '1'
+    formats:
+      - deb
+      - rpm
+      - apk
+      - archlinux
+    bindir: /usr/bin
+    deb:
+      compression: xz
+# Release 由 CNB / GitHub 各自的流水线创建（正文与附件上传逻辑不迁移），
+# 这里只产出构建产物。
+release:
+  disable: true

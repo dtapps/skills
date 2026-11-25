@@ -1,0 +1,586 @@
+# master 分支的两种触发方式共用同一份流水线（YAML 锚点 .trigger_release）：
+#   - web_trigger_release：页面按钮手动触发，版本号由输入框给
+#   - api_trigger_release：Open API 触发（event=api_trigger_release），版本号从 env.version 传入
+# 定时 nightly 统一由 GitHub Actions 的 schedule 触发（.github/workflows/release.yml），
+# 这里不配置 crontab，避免两边同时发同一个日期的 tag。
+#
+# CNB 是本仓库的主平台（origin）：Release 一律从源码构建，产物与提交天然一致，
+# 不从其它平台搬产物（那会让同一个 tag 出现「两份产物」）。
+#
+# 版本号规则（实现见 scripts/ci/resolve-prerelease.sh，与 GitHub 的 release.yml 同口径）：
+#   v1.2.3          -> 正式版，Release 不勾选 prerelease
+#   v1.2.3-rc.1     -> 预发布（rc 渠道），Release 勾选 prerelease
+#   v1.2.3-beta.1   -> 预发布（beta 渠道），Release 勾选 prerelease
+#   v1.2.3-alpha.1  -> 预发布（alpha 渠道），Release 勾选 prerelease
+#   v1.2.3-nightly.20260101 -> 预发布（nightly 渠道），Release 勾选 prerelease
+#   nightly         -> 不是版本号，自动推导成
+#                      <最近正式版 + 1 个补丁>-nightly.<UTC 构建日期>，
+#                      例如最近正式版 v0.2.7 -> tag v0.2.8-nightly.20261114。
+#
+# 「是不是预发布」不接受人工勾选，只看版本号后缀：布尔输入会和版本号打架。
+# 以 . 开头的顶层 key 只是锚点定义，不会被 CNB 当成分支。
+.trigger_release: &trigger_release
+  runner:
+    tags: cnb:arch:amd64 # 指定 Runner 必须有这个标签
+  services:
+    - docker # 启用 Docker 服务（用于 docker build/push）
+  docker:
+    image: docker.cnb.cool/dtapp/golang:latest # 统一使用预构建的 CI 环境镜像
+    volumes:
+      - /root/.cache/go-build:copy-on-write # Go 构建缓存 - 加速编译
+      - /go/pkg/mod:copy-on-write # 仅缓存 Go 模块下载，避免覆盖镜像内预装的 /go/bin 工具
+  # 导入外部环境变量/配置。多文件必须用 YAML 数组（逗号分隔字符串不生效）；
+  # 同名变量后面的覆盖前面的。npc.yml 提供 NPC_ENABLED，用于全局控制是否触发 NPC。
+  imports:
+    - https://cnb.cool/dtapp/envs/-/blob/main/github.yml
+    - https://cnb.cool/dtapp/envs/-/blob/main/npc.yml
+  # 公告评论的开关/内容：
+  # - NPC_ENABLED：从 envs/npc.yml 导入的全局总开关，false 时所有 NPC 触发点都不工作；
+  # - ANNOUNCEMENT_COMMENT_TEXT：评论正文，@ 本仓库自定义 NPC「发版日志助手」
+  #   （在 .cnb/settings.yml 的 npc.roles 里定义，要求写在它的 prompt 里），
+  #   只给出要对比的两个 tag；这里不再重复写要求，避免两处维护。
+  #   @ 后的仓库路径用 {{REPOSLUG}}，发评论前替换成流水线注入的 CNB_REPO_SLUG，
+  #   不写死具体仓库——仓库改名 / fork 后仍能 @ 到本仓库的角色。
+  #
+  # ⚠️ {{PREVIOUSTAG}} / {{CURRENTTAG}} / {{REPOSLUG}} 不是 CNB 的模板语法：env 里的值就是字面量，
+  #   流水线不会替我们替换，直接发出去就是两个花括号。真实值在「发布公告评论」stage
+  #   发评论前用 sed 换掉（基准 tag 由「准备发版公告」stage 调
+  #   scripts/ci/resolve-prev-tag.sh 算出并落盘）。所以模板里**不要出现 | 和 &**：
+  #   sed 用 | 当分隔符，& 在替换串里是特殊字符。
+  env:
+    CI: 'true'
+    ANNOUNCEMENT_COMMENT_TEXT: |-
+      @{{REPOSLUG}}(发版日志助手) 请对比标签 {{PREVIOUSTAG}} 和 {{CURRENTTAG}} 的差异。
+  stages:
+    - name: 输出基本信息
+      script: |
+        # web_trigger 从输入框、api_trigger 从 env.version 取版本号；留空兜底成 nightly，
+        # 由 resolve-prerelease.sh 展开成 <最近正式版+1补丁>-nightly.<UTC日期>。
+        # 定时 nightly 统一由 GitHub Actions 的 schedule 触发，不走 CNB。
+        version="${version:-nightly}"
+        echo "原始 version: $version"
+        echo "原始 commit: ${commit:-（未填写）}"
+
+        # CNB 的按钮挂在分支详情页，触发提交由平台决定，git:release 也没有参数能指定
+        # tag 的目标提交。所以 commit 输入只做「期望提交」校验 + 元数据，不切 checkout：
+        # 一旦切到别的提交，产物是 A、tag 却指向 B，会发出内容对不上的 Release。
+        # 只放行 git ref 的安全字符，避免输入拼进 git 命令时被注入。
+        interior_commit="$(git rev-parse HEAD)" || exit 1
+        if [ -z "${interior_commit}" ]; then
+          echo "❌ 取不到当前 HEAD，无法校验 commit" >&2
+          exit 1
+        fi
+        echo "实际构建提交: ${interior_commit}"
+        if [ -n "${commit:-}" ]; then
+          case "${commit}" in
+            *[!0-9A-Za-z._/-]*) echo "❌ commit 含非法字符: ${commit}" >&2; exit 1 ;;
+          esac
+          resolved="$(git rev-parse --verify "${commit}^{commit}" 2>/dev/null || true)"
+          if [ -z "${resolved}" ] || [ "${resolved}" != "${interior_commit}" ]; then
+            echo "❌ 填写的 commit ${commit} 与本次触发提交 ${interior_commit} 不一致" >&2
+            echo "   CNB 的 git:release 无法把 tag 指向其它提交，请到对应提交的分支详情页触发" >&2
+            exit 1
+          fi
+          echo "✅ commit 校验通过"
+        fi
+
+        # 归一化（补 v 前缀）与预发布判定只有一份实现，CNB 与 GitHub 都 source 它，
+        # 避免两边各写一套 grep 正则、判断口径慢慢跑偏。
+        # 结果：TAG（带 v 前缀）/ PRERELEASE（true|false）/ VERSION_TYPE / CHANNEL / VERSION_BARE / PRE_NOTE
+        # 版本号为空时 resolve_version 返回 1，这里直接让 stage 失败，而不是打出 :v 这种非法 tag
+        #
+        # nightly 的基版本优先取「最近正式版 tag」，CNB 的 checkout 不一定带 tag，
+        # 这里先补一次 fetch（失败不致命：再回退到预发布 tag 的基版本，都没有才用 0.0.0）。
+        git fetch --tags --quiet --force || true
+        # shellcheck source=scripts/ci/resolve-prerelease.sh
+        . scripts/ci/resolve-prerelease.sh
+        resolve_version "$version" || exit 1
+        echo "$PRE_NOTE"
+
+        # 通过 set-output 输出到 result，由下方 exports 映射成后续 stage 的环境变量。
+        # 版本号用于构建时注入 ldflags，预发布标志用于最后生成 Release 选项，
+        # interior_commit 用于正文里的「提交」链接。
+        echo "##[set-output interior_version=$TAG]"
+        echo "##[set-output interior_prerelease=$PRERELEASE]"
+        echo "##[set-output interior_commit=$interior_commit]"
+      exports:
+        interior_version: INTERIOR_VERSION
+        interior_prerelease: INTERIOR_PRERELEASE
+        interior_commit: INTERIOR_COMMIT
+    # 纯 Go 项目，没有前端依赖（Makefile 只有 deps-go / deps）。
+    - name: 安装全部 Go 依赖
+      script: make deps-go
+    # GoReleaser 统一负责六平台交叉编译、Linux 系统包（deb/rpm/apk/Arch）与 SHA256SUMS。
+    - name: 构建所有平台产物
+      script: VERSION=${INTERIOR_VERSION} make goreleaser-release
+    # 发版前先把版本号这件事验干净。这三件事出错都不会让构建失败，
+    # 但会发出一个「看起来成功、内容是错的」Release：
+    #   1) tag 没拉全 → changelog 算不出基准，正文变成「首次发布」
+    #   2) tag 已经存在 → 覆盖已有 tag，历史 Release 的对比基准跟着变
+    #   3) 版本号比已有的还旧 → 正文里 diff 是反的
+    - name: 校验版本号与 tag
+      script: |
+        set -eu
+        echo "版本号: ${INTERIOR_VERSION}"
+
+        # tag 拉全（CNB 的 checkout 不一定带 tag，缺了就没法算基准）
+        git fetch --tags --quiet --force || true
+        count=$(git tag -l 'v*' | wc -l | tr -d ' ')
+        echo "本地版本 tag: ${count} 个"
+        if [ "$count" -eq 0 ]; then
+          echo "❌ 一个版本 tag 都没有，changelog 会退化成「首次发布」"
+          echo "   检查 checkout 是否带 tag，或手动 git fetch --tags"
+          exit 1
+        fi
+
+        # tag 不能已经存在：重跑同一次发布会把 tag 挪到新提交上
+        # nightly 是例外：按天发布同一个 tag，同一天重跑/补发要能覆盖
+        # （先删掉同名 Release 与 tag 再重建）。
+        if git rev-parse -q --verify "refs/tags/${INTERIOR_VERSION}" >/dev/null; then
+          case "${INTERIOR_VERSION}" in
+            *-nightly.*)
+              echo "✅ ${INTERIOR_VERSION} 是夜间构建，允许覆盖同名 Release"
+              ;;
+            *)
+              echo "❌ tag ${INTERIOR_VERSION} 已存在，不能重复发布"
+              echo "   已有指向: $(git rev-parse --short "${INTERIOR_VERSION}")"
+              echo "   当前 HEAD: $(git rev-parse --short HEAD)"
+              exit 1
+              ;;
+          esac
+        else
+          echo "✅ tag ${INTERIOR_VERSION} 不存在，可以发布"
+        fi
+
+        # 新版本必须比已有的同渠道/正式版更新，否则正文里的 diff 是反的
+        if [ "${INTERIOR_PRERELEASE}" = "false" ]; then
+          # 只认严格的三段式版本 tag：点分隔的预发布 tag 不是正式版，
+          # 不能拿来当「上一个正式版」比。
+          latest=$(git tag -l 'v*' | grep -E '^[vV]?[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)
+          if [ -n "$latest" ] && [ "$(printf '%s\n%s\n' "$latest" "${INTERIOR_VERSION}" | sort -V | tail -n 1)" != "${INTERIOR_VERSION}" ]; then
+            echo "❌ 版本号 ${INTERIOR_VERSION} 比已有的正式版 ${latest} 旧"
+            exit 1
+          fi
+          echo "✅ 比上一个正式版 ${latest:-（无）} 新"
+        fi
+    # 正文格式只有一份实现（scripts/ci/render-release-body.sh），GitHub 那份也调用它，
+    # 避免两边各写一遍表格/标题/下载链接，改一处忘一处。
+    - name: 生成 Release 正文
+      script: |
+        set -eu
+        # 打包没出产物就别往下走：否则会发出一个零附件的 Release，正文表格是空的，
+        # 看起来「成功」，用户点开什么都下不到。
+        count=$(find dist -maxdepth 1 -type f \( -name '*.tar.gz' -o -name '*.zip' -o -name '*.deb' -o -name '*.rpm' -o -name '*.apk' -o -name '*.pkg.tar.zst' \) | wc -l)
+        if [ "$count" -eq 0 ]; then
+          echo "❌ 打包没有产出任何压缩包/安装包，先看 make goreleaser-release 的日志"
+          exit 1
+        fi
+        echo "产物 ${count} 个"
+
+        CNB_BASE="${CNB_REPO_URL_HTTPS%/}"
+        # changelog：按渠道选对比基准（rc 对 rc、beta 对 beta、nightly 对 nightly、正式版对正式版；
+        # 首次发某渠道则回退到上一个正式版）。实现见 scripts/ci/release-changelog.sh，
+        # 和 GitHub 那份共用同一脚本。
+        # REPO_URL 传给脚本：提交数超上限时截断提示里能带上「完整记录」链接。
+        # 脚本挑不出基准时会 exit 1（而不是谎报「首次发布」），这里显式接住，
+        # 免得 CNB 不传播退出码、正文带着错误提示发出去。
+        # CNB 的 Web 路径统一带 /-/ 前缀（releases 是 /-/releases，提交是 /-/commit），
+        # 和 GitHub 的 /commit 不同，所以前缀由调用方传，脚本里不猜。
+        if ! LATEST_CHANGE_LOG="$(REPO_URL="${CNB_BASE}" \
+          COMMIT_URL="${CNB_BASE}/-/commit" \
+          sh scripts/ci/release-changelog.sh "${INTERIOR_VERSION}")"; then
+          echo "❌ 生成更新内容失败，见上面的错误信息"
+          exit 1
+        fi
+        # REPO_URL / COMMIT_SHA 决定正文里「提交」那一行能不能带链接；
+        # BUILD_TIME 取本次构建时间，不传的话脚本会退化成执行时刻，两者基本等价但显式更清楚。
+        VERSION="${INTERIOR_VERSION}" \
+          PRERELEASE="${INTERIOR_PRERELEASE}" \
+          DL_BASE="${CNB_BASE}/-/releases/download/${INTERIOR_VERSION}" \
+          STABLE_URL="${CNB_BASE}/-/releases" \
+          REPO_URL="${CNB_BASE}" \
+          COMMIT_URL="${CNB_BASE}/-/commit" \
+          COMMIT_SHA="${INTERIOR_COMMIT}" \
+          BUILD_TIME="$(date -u '+%Y-%m-%d %H:%M:%S UTC')" \
+          ARTIFACT_DIR=dist \
+          OUT_FILE=release_body.md \
+          CHANGELOG="${LATEST_CHANGE_LOG}" \
+          sh scripts/ci/render-release-body.sh
+    # 生成 Release 选项文件，供 git:release 的 optionsFrom 读取。
+    #
+    # 为什么不用 options 里的 ${INTERIOR_PRERELEASE} 直接插值：preRelease 的类型是严格的
+    # Boolean（对比 latest 明确允许 "true"|"false" 字符串），而变量替换产出的是字符串
+    # "false"，字符串在布尔位置上容易被当成真值，导致正式版也被勾成预发布。
+    # 走 optionsFrom 读到的是 JSON 里真正的布尔值，没有这个歧义。
+    # descriptionFromFile 同理：正文里有反引号、管道符和换行，塞进插值里容易被转义毁掉。
+    - name: 生成 Release 选项文件
+      script: |
+        set -eu
+        # 空值写进配置后 git:release 会当成脏配置，报错还落在「发布」那一步，跟真正的原因隔了三屏。
+        # 空就直接死在这一步。
+        : "${INTERIOR_VERSION:?INTERIOR_VERSION 为空——第一步没跑成功}"
+        : "${INTERIOR_PRERELEASE:?INTERIOR_PRERELEASE 为空——第一步没跑成功}"
+
+        # 标题统一带项目名前缀（与 GitHub 的 .github/workflows/release.yml 同口径，改名字两边一起改）
+        project_name="dtSkill"
+
+        if [ "${INTERIOR_PRERELEASE}" = "true" ]; then
+          release_title="${project_name} ${INTERIOR_VERSION} (预发布)"
+          prerelease_json=true
+        else
+          release_title="${project_name} ${INTERIOR_VERSION}"
+          prerelease_json=false
+        fi
+
+        printf '{\n  "tag": "%s",\n  "title": "%s",\n  "descriptionFromFile": "release_body.md",\n  "preRelease": %s\n}\n' \
+          "${INTERIOR_VERSION}" "${release_title}" "${prerelease_json}" > ./.cnb-release-options.json
+        cat ./.cnb-release-options.json
+    # 删除已存在的 Release 与 Tag，再重建，避免旧附件堆积、也让重跑幂等。
+    # 删除逻辑统一在 scripts/ci/delete-release.sh（各平台共用），CNB_TOKEN 需 repo-release:rw 权限，
+    # CNB_API_ENDPOINT 由流水线自动注入。
+    #
+    # 拿不到 CNB_TOKEN 时整段跳过：正常发版（tag 是新的）本来就不需要删，
+    # 只有「同 tag 重跑」才用得上，缺令牌不该把发版卡死。
+    - name: 删除已存在的 Release 与 Tag
+      script: |
+        set -u
+        if [ -z "${CNB_TOKEN:-}" ]; then
+          echo "ℹ️ 未配置 CNB_TOKEN，跳过删除同名 Release/Tag（首次发布无需删除）"
+          exit 0
+        fi
+        if [ -z "${CNB_API_ENDPOINT:-}" ] || [ -z "${CNB_REPO_SLUG:-}" ]; then
+          echo "ℹ️ CNB_API_ENDPOINT / CNB_REPO_SLUG 未注入，跳过删除"
+          exit 0
+        fi
+        sh scripts/ci/delete-release.sh --platform cnb --tag "${INTERIOR_VERSION}" || true
+    # https://docs.cnb.cool/zh/build/internal-steps.html#git-release
+    - name: 创建 Release
+      type: git:release
+      # tag / title / preRelease / description 全部来自上一步写出的 JSON。
+      # 版本号带 -rc / -beta / -alpha / -nightly 后缀才勾选「预发布」，正式版不勾，不接受人工输入。
+      optionsFrom: ./.cnb-release-options.json
+    # https://docs.cnb.cool/zh/plugin/public/cnbcool/attachments.html
+    - name: 上传 Release 附件
+      image: cnbcool/attachments:latest
+      settings:
+        type: UPLOAD
+        tag: ${INTERIOR_VERSION}
+        attachments:
+          - 'dist/*.tar.gz'
+          - 'dist/*.zip'
+          - 'dist/*.deb'
+          - 'dist/*.rpm'
+          - 'dist/*.apk'
+          - 'dist/*.pkg.tar.zst'
+          - 'dist/SHA256SUMS'
+      exports:
+        FILES: FILES
+    - name: 输出 Release 附件
+      script: echo $FILES
+    # 清理旧 nightly（与 GitHub release.yml 的「只保留最近 3 个」同口径）。
+    # 镜像侧每天被动同步一次，tag 各不相同，不清理就会无限堆积（Release + tag + 附件）；
+    # GitHub 侧删掉的旧 nightly也不会自动从 CNB 消失。
+    # 只处理日期 nightly（tag 以 -nightly.YYYYMMDD 结尾），rc / beta / alpha 与正式版一律不动。
+    # 删除逻辑统一在 scripts/ci/delete-release.sh（清理失败只告警，始终退出 0）。
+    - name: 清理旧 nightly（只保留最近 3 个）
+      script: |
+        set -eu
+        TAG="${INTERIOR_VERSION}"
+        case "${INTERIOR_PRERELEASE}:${TAG}" in
+          true:*-nightly.[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]) ;;
+          *) echo "非日期 nightly 发布（${TAG}），跳过清理"; exit 0 ;;
+        esac
+
+        if [ -z "${CNB_TOKEN:-}" ]; then
+          echo "ℹ️ 未配置 CNB_TOKEN，跳过 nightly 清理"
+          exit 0
+        fi
+        if [ -z "${CNB_API_ENDPOINT:-}" ] || [ -z "${CNB_REPO_SLUG:-}" ]; then
+          echo "ℹ️ CNB_API_ENDPOINT / CNB_REPO_SLUG 未注入，跳过清理"
+          exit 0
+        fi
+
+        sh scripts/ci/delete-release.sh --platform cnb --keep 3
+    # 发布成功后同步开一条「发版公告」Issue。
+    #
+    # 为什么放在 CNB 侧：公告正文要引用 CNB 的 Release 下载链接，而 GitHub 侧发完版
+    # 只是开一条 Discussion，由 CNB 自己开 Issue 最顺（也只开一条，不会两边各开一遍）。
+    #
+    # 为什么用官方 cnbcool/cnb-cli 插件而不是自己拼 OpenAPI：
+    # CNB 没有「创建 Issue」的内置步骤（git:issue-update 只能改状态 / 标签 / 处理人，
+    # 既不能创建、也不能改标题与正文），能创建 Issue 的官方工具就是 cnb-cli 插件
+    # （官方 OpenAPI 命令行工具，CNB_TOKEN 由流水线自动注入）。
+    #
+    # ⚠️ 命令形态（v1.23.5 实测）：模块 / 工具用「位置参数」（cnb issues create-issue），
+    # 选项用 --repo / --title / --body-file / --labels / --number / --state 这类长选项；
+    # 不要写 cnb --module issues --tool create-issue——v1.23.5 的解析器会把 --module
+    # 当成位置参数，报「工具函数 --module/issues 不存在」。
+    #
+    # 为什么拆成两个 stage：
+    # - 「准备发版公告」跑在默认镜像里：只负责渲染正文与标题（不碰网络）；
+    # - 「创建发版公告」「发布公告评论」跑在官方 CLI 镜像里：image 是任务级环境
+    #   （见 CNB 文档「构建环境」），不会影响同一条流水线里其它 stage 用的镜像。
+    #
+    # 为什么失败不阻断：这一步跑在 Release 与附件都上传完之后，发布已经完成；
+    # 这里红掉只会误导，所以只告警。
+    - name: 准备发版公告
+      # CNB 的 if 是 shell 脚本，退出码 0 才跑这个 stage。跳过条件：
+      # - nightly 每天一个 tag，每天开一条公告会把 Issue 列表刷成日报；
+      # - npc.yml 的 NPC_ENABLED 关闭时整条公告链都不跑（准备/创建/评论均不触发 NPC）。
+      if: &skip_announcement |
+        case "${INTERIOR_VERSION}" in
+          *-nightly.*) exit 1 ;;
+        esac
+        case "${NPC_ENABLED:-true}" in
+          0 | [fF][aA][lL][sS][eE] | [nN][oO] | [oO][fF][fF])
+            echo "NPC 功能已关闭（NPC_ENABLED=${NPC_ENABLED:-}），跳过发版公告流程"
+            exit 1 ;;
+        esac
+        exit 0
+      script: |
+        set -eu
+
+        VERSION="${INTERIOR_VERSION}"
+        PRERELEASE="${INTERIOR_PRERELEASE}"
+        WEB_BASE="${CNB_REPO_URL_HTTPS%/}/-"
+
+        # 公告正文与 Release 正文同源：下载表 / 校验 / 更新内容都取自 release_body.md，
+        # 不在这里另编一套（格式见 scripts/ci/render-announcement-body.sh）。
+        if [ ! -f scripts/ci/render-announcement-body.sh ]; then
+          echo "⚠️ 缺少 scripts/ci/render-announcement-body.sh（发布用的提交里没有该脚本），跳过公告"
+          exit 0
+        fi
+
+        export VERSION PRERELEASE
+        export RELEASE_BODY="release_body.md"
+        export OUT_FILE="announcement_body.md"
+        export TITLE_FILE="announcement-title.txt"
+        export CNB_WEB_BASE="${WEB_BASE}"
+        export GITHUB_WEB="https://github.com/dtapps/skills"
+        export STABLE_URL="${WEB_BASE}/releases/latest"
+        # stage 1 已切到本次发布的提交，HEAD 即发布提交。
+        export COMMIT_SHA="$(git rev-parse HEAD 2>/dev/null || true)"
+
+        # 公告评论要指明「对比哪两个 tag」。基准必须和 Release 正文同口径（正式版对比
+        # 上一个正式版，不掺 rc/beta），所以直接调 resolve-prev-tag.sh —— 它是正文
+        # （release-changelog.sh）与这里共用的唯一一份判定，别另写一套 tag 排序。
+        git fetch --tags --quiet --force >/dev/null 2>&1 || true
+        PREV_TAG="$(sh scripts/ci/resolve-prev-tag.sh "${VERSION}" 2>/dev/null || true)"
+        # 落盘给下一步（评论 stage 跑在 cnb-cli 镜像里，不保证有 git，也不该重算一遍）。
+        printf '%s' "${PREV_TAG}" > announcement-prev-tag.txt
+        echo "对比基准 tag：${PREV_TAG:-（无，评论将按公告正文改写）}"
+
+        # 渲染失败也不让发布流水线变红：正文渲染不出来只是少一条公告。
+        # 后面的步骤读不到标题会自动跳过（创建 stage 有缺失检查）。
+        if ! sh scripts/ci/render-announcement-body.sh > /dev/null; then
+          echo "⚠️ 生成公告正文失败，跳过发版公告"
+          exit 0
+        fi
+        echo "公告正文已生成：${OUT_FILE}（标题见 ${TITLE_FILE}）"
+    # 用官方 cnbcool/cnb-cli 插件创建 / 更新公告 Issue。
+    #
+    # Issue 一旦建出来就删不掉，所以这里严格「先查后改」：
+    # 按标题找出所有同版本的公告，第一个更新、其余（历史重复）关掉。
+    - name: 创建发版公告
+      image: cnbcool/cnb-cli
+      if: *skip_announcement
+      script: |
+        set -eu
+
+        REPO="${CNB_REPO_SLUG}"
+        KEYWORD="${INTERIOR_VERSION}"
+        LABEL="发版公告"
+        BODY="announcement_body.md"
+
+        TITLE="$(cat announcement-title.txt 2>/dev/null || echo '')"
+        if [ -z "${TITLE}" ] || [ ! -f "${BODY}" ]; then
+          echo "⚠️ 缺少公告标题或正文，跳过"
+          exit 0
+        fi
+
+        # 1) 先把标签建好：仓库里没有「发版公告」这个标签时，带标签建 Issue 会被拒。
+        #    标签已存在时接口报 400、CLI 退出码非 0，忽略即可。
+        cnb repo-labels post-label \
+          --repo "${REPO}" \
+          --name "${LABEL}" \
+          --color "1677ff" \
+          --description "dtSkill 发版公告" \
+          > /dev/null 2>&1 || echo "（标签可能已存在，忽略）"
+
+        # 2) 先查：open / closed 各查一次（官方接口的 state 只列了 open 与 closed）。
+        #    已关闭的公告也算「已经创建过」，照样更新，不能因为关了再建一条。
+        for issue_state in open closed; do
+          cnb issues list-issues \
+            --repo "${REPO}" \
+            --state "${issue_state}" \
+            --keyword "${KEYWORD}" \
+            --page 1 \
+            --page-size 50 \
+            > "announcement-list-${issue_state}.txt" 2>&1 || true
+        done
+
+        # 3) 从 CLI 输出里找「标题完全一致」的所有公告（不 exit：可能有多条历史重复）。
+        numbers="$(cat announcement-list-open.txt announcement-list-closed.txt 2>/dev/null | awk -v t="${TITLE}" '
+          /^[[:space:]]*(-[[:space:]]+)?number: / { v = $NF; gsub(/[^0-9]/, "", v); if (v != "") n = v }
+          /^[[:space:]]*(-[[:space:]]+)?title: / {
+            line = $0
+            sub(/^[[:space:]]*(-[[:space:]]+)?title: /, "", line)
+            gsub(/^[",]+|[",]+$/, "", line)
+            if (line == t && n != "") print n
+          }
+        ' | sort -un || true)"
+
+        if [ -n "${numbers}" ]; then
+          number="$(printf '%s\n' "${numbers}" | head -1)"
+          echo "已存在同版本公告（#${number}），改写正文"
+          if cnb issues update-issue \
+            --repo "${REPO}" \
+            --number "${number}" \
+            --title "${TITLE}" \
+            --body-file "${BODY}" \
+            > announcement-result.txt 2>&1; then
+            echo "✓ 已更新发版公告 #${number}"
+          else
+            echo "⚠️ 更新发版公告失败，请手工改一下："
+            cat announcement-result.txt 2>/dev/null || true
+          fi
+
+          # 同版本有多条时（历史上幂等失效留下的），逐条更新成同一份内容。
+          # 不关闭任何一条：公告是给用户看的，关掉反而像「这个版本被撤了」。
+          for other in $(printf '%s\n' "${numbers}" | tail -n +2); do
+            if cnb issues update-issue \
+              --repo "${REPO}" \
+              --number "${other}" \
+              --title "${TITLE}" \
+              --body-file "${BODY}" \
+              > /dev/null 2>&1; then
+              echo "已同步更新同版本公告 #${other}"
+            else
+              echo "⚠️ 同步更新同版本公告 #${other} 失败，请手工处理"
+            fi
+          done
+
+          # 编号落盘：下一步（发评论）要用它定位公告。
+          printf '%s' "${number}" > announcement-number.txt
+          exit 0
+        fi
+
+        echo "创建发版公告：${TITLE}"
+        # CLI 的退出码就是结果：0 成功，3 = HTTP / 网络错误（输出里有 status: 400 等详情）。
+        if cnb issues create-issue \
+          --repo "${REPO}" \
+          --title "${TITLE}" \
+          --body-file "${BODY}" \
+          --labels "${LABEL}" \
+          > announcement-result.txt 2>&1; then
+          echo "✓ 已创建发版公告"
+        else
+          # 仓库里还没有「发版公告」这个标签时，带标签创建会被拒；
+          # 去掉标签再试一次，公告本身仍然发得出去。
+          echo "带标签创建失败，去掉标签重试"
+          if cnb issues create-issue \
+            --repo "${REPO}" \
+            --title "${TITLE}" \
+            --body-file "${BODY}" \
+            > announcement-result.txt 2>&1; then
+            echo "✓ 已创建发版公告"
+          else
+            echo "⚠️ 创建发版公告失败，请手工补一条："
+            cat announcement-result.txt 2>/dev/null || true
+          fi
+        fi
+
+        # 把 Issue 编号落盘：下一步（发评论）要用它定位公告。
+        issue_number="$(grep -oE 'number: .?[0-9]+' announcement-result.txt 2>/dev/null | head -1 | grep -oE '[0-9]+' || true)"
+        if [ -n "${issue_number}" ]; then
+          printf '%s' "${issue_number}" > announcement-number.txt
+          echo "公告 Issue 编号：${issue_number}（已落盘，下一步用它发评论）"
+        else
+          echo "⚠️ 公告已创建但没解析到 Issue 编号，评论会跳过；下面是原始输出："
+          head -20 announcement-result.txt 2>/dev/null || true
+        fi
+    # 在公告 Issue 上追加一条评论，@ 本仓库自定义 NPC「发版日志助手」
+    # （在 .cnb/settings.yml 的 npc.roles 里定义，整理要求写在它的 prompt 里），
+    # 让它整理用户友好的更新日志并作为评论发回。
+    #
+    # 开关/内容在 job 级 env 或 imports 里（见 .trigger_release 段）：
+    # - NPC_ENABLED：从 npc.yml 导入的总开关，关闭时整段跳过、不触发 NPC；
+    # - ANNOUNCEMENT_COMMENT_TEXT：评论正文，只给要对比的两个 tag，不在两处重复写要求。
+    #
+    # 模板里的 {{PREVIOUSTAG}} / {{CURRENTTAG}} / {{REPOSLUG}} 由本 stage 替换：
+    #   - CURRENTTAG 就是本次发布的 tag（INTERIOR_VERSION）；
+    #   - PREVIOUSTAG 来自「准备发版公告」落盘的 announcement-prev-tag.txt，
+    #     取不到（首次发这个渠道 / 补发历史版本）就换成一句文字说明，
+    #     NPC 那边会退回「按公告正文改写」，不会拿着假 tag 去 diff；
+    #   - REPOSLUG 用流水线注入的 CNB_REPO_SLUG，不写死仓库路径，fork 后仍能 @ 到角色。
+    - name: 发布公告评论
+      image: cnbcool/cnb-cli
+      # 与前两条公告 stage 同一入口：nightly 或 NPC_ENABLED 关闭时整条链都不跑。
+      if: *skip_announcement
+      script: |
+        set -eu
+
+        REPO="${CNB_REPO_SLUG}"
+
+        # 公告 Issue 的编号由「创建发版公告」落盘；没有编号说明公告没建成。
+        NUMBER="$(cat announcement-number.txt 2>/dev/null || echo '')"
+        if [ -z "${NUMBER}" ]; then
+          echo "没有公告 Issue 编号（公告未创建或已被跳过），不追加评论"
+          exit 0
+        fi
+
+        # 先替换占位符再落盘：env 里的 {{...}} 只是字面量，不替换就会原样发出去。
+        # sed 用 | 作分隔符、& 在替换串里是特殊字符，所以模板里不允许出现这两个字符。
+        CUR_TAG="${INTERIOR_VERSION}"
+        PREV_TAG="$(cat announcement-prev-tag.txt 2>/dev/null || true)"
+        [ -n "${PREV_TAG}" ] || PREV_TAG='（首个版本，无对比基准）'
+
+        # 评论正文只给两个 tag；整理要求写在 NPC prompt 里，避免两处维护。
+        printf '%s' "${ANNOUNCEMENT_COMMENT_TEXT:-}" \
+          | sed "s|{{PREVIOUSTAG}}|${PREV_TAG}|g; s|{{CURRENTTAG}}|${CUR_TAG}|g; s|{{REPOSLUG}}|${REPO}|g" \
+            > announcement-comment.md
+        if [ ! -s announcement-comment.md ]; then
+          echo "⚠️ 评论内容为空（ANNOUNCEMENT_COMMENT_TEXT），不追加评论"
+          exit 0
+        fi
+
+        # 幂等：评论发出去也删不掉，重跑时先看这条公告下有没有同样的评论，有就不重复发。
+        MARK="$(head -1 announcement-comment.md)"
+        if [ -z "${MARK}" ]; then
+          echo "⚠️ 评论第一行为空，无法做重复检查，直接发布"
+        else
+          cnb issues list-issue-comments \
+            --repo "${REPO}" \
+            --number "${NUMBER}" \
+            --sort -created \
+            --page-size 30 \
+            > announcement-comment-list.txt 2>&1 || true
+
+          if ! grep -q 'status: 2' announcement-comment-list.txt 2>/dev/null; then
+            echo "⚠️ 查询已有评论失败，无法确认是否发过；仍会发布，请留意是否重复"
+            cat announcement-comment-list.txt 2>/dev/null || true
+          elif grep -qF -- "${MARK}" announcement-comment-list.txt 2>/dev/null; then
+            echo "✓ 公告 #${NUMBER} 已有同样的评论，跳过（评论删不掉，不重复发）"
+            exit 0
+          fi
+        fi
+
+        if cnb issues post-issue-comment \
+          --repo "${REPO}" \
+          --number "${NUMBER}" \
+          --body-file announcement-comment.md \
+          > announcement-comment-result.txt 2>&1; then
+          echo "✓ 已在公告 #${NUMBER} 上发布评论"
+        else
+          echo "⚠️ 发布公告评论失败，请手工补一条评论："
+          cat announcement-comment-result.txt 2>/dev/null || true
+        fi
+master:
+  # 手动触发：通过页面自定义按钮执行（预发布看版本号后缀，页面不再有勾选框）
+  web_trigger_release:
+    - *trigger_release
+  # API 触发：由 GitHub Actions 发布 Release 后调用 CNB Open API 触发（event=api_trigger_release）
+  # 需通过 env 传入 version 变量（如 {"version":"v1.2.3"} / {"version":"v1.2.3-rc.1"} / {"version":"v1.2.4-nightly.20260101"}）。
+  # 预发布标记由 version 后缀推导，env 里的 pre_release 已废弃（传了也不看，避免两套口径打架）。
+  api_trigger_release:
+    - *trigger_release

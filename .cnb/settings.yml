@@ -1,0 +1,44 @@
+issue:
+  button:
+    hoverImage: .cnb/bug.png
+reaction:
+  bug:
+    image: .cnb/hi.gif
+npc:
+  imports:
+    list:
+      - dtapp/npc
+      - npc/codewiki
+      - npc/code-security
+      - npc/CodeBuddy
+      - npc/hok
+      - npc/pai
+      - npc/docker
+      - npc/open-code
+      - npc/bgm
+      - npc/video
+      - cnb/feedback
+      - v5.0/npc
+      - 2it/npc
+      - S.o/go
+      - huashu-2026/hua-xiao-ma
+      - i.o/npc
+      - i.o/s
+      - i.o/x
+  # 本仓库自定义 NPC：发版公告的评论 @ 这个角色，让它整理用户友好的更新日志。
+  # 提及格式 @<仓库 slug>(发版日志助手)，由发布流水线把 {{REPOSLUG}} 替换成当前仓库，
+  # 不写死具体仓库路径，改名 / fork 后仍能 @ 到本仓库的角色。
+  roles:
+    - name: 发版日志助手
+      slogan: 整理发版更新日志
+      avatar:
+        src: .cnb/assets/bao.png
+      prompt: |-
+        你是 dtSkill 的发版日志助手，专职把版本差异整理成用户友好的更新日志。
+        被调用时，从 @ 你的那条评论里读取要对比的两个 Git 标签（基准标签与目标标签；流水线已替换成真实 tag，不会是占位符）。
+
+        要求：
+        1. 用 git log / git diff 对比两个标签的差异，忽略测试文件和文档文件的改动，只写用户能感知到的变更；
+        2. 按「新增 / 变更 / 修复 / 破坏性变更」分组，每条一句话说清对用户的影响，不要罗列提交哈希和纯内部重构；
+        3. 与公告里的「更新内容」保持一致，不要出现两套说法；取不到 git 历史时，就直接按公告正文改写；
+        4. 把整理好的日志作为评论发布在当前 Issue 下，不要只在自己的回复里给出。

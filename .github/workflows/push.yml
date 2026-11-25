@@ -1,0 +1,65 @@
+# 推送工作流（纯 Go 项目，没有前端检查步骤）
+#
+# https://github.com/actions/runner-images
+# https://github.com/actions/checkout
+# https://github.com/actions/cache
+# https://github.com/dtapps/golang
+name: PushRequest
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+permissions:
+  contents: read
+  packages: read # 拉取 GHCR 上的 CI 镜像（公开镜像亦可匿名拉，写上以防仓库转私有）
+# 并发策略：同一分支的多次触发串行排队，绝不取消「正在运行」的旧运行。
+# queue: max 让同一 group 最多保留 100 个 pending，按 FIFO 依次执行。
+concurrency:
+  group: push-check-${{ github.ref }}
+  cancel-in-progress: false
+  queue: max
+env:
+  CI: 'true'
+jobs:
+  check:
+    runs-on: ubuntu-26.04
+    container:
+      image: ghcr.io/dtapps/golang:latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v7
+      # 容器镜像已预装 Go 工具链（GOPATH=/go，工具在 /go/bin 且已在 PATH）。
+      - name: 设置 Go 工具链目录
+        shell: bash
+        run: |
+          echo "GO_PATH_DIR=/go" >> "$GITHUB_ENV"
+          echo "GO_BIN_DIR=/go/bin" >> "$GITHUB_ENV"
+      - name: 缓存 Go module
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.GO_PATH_DIR }}/pkg/mod
+          key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-mod-
+      - name: 缓存 Go build 缓存
+        uses: actions/cache@v6
+        with:
+          path: ${{ format('{0}/.cache/go-build', env.HOME) }}
+          key: ${{ runner.os }}-go-build-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-build-
+      - name: 安装全部 Go 依赖
+        run: make deps-go
+      # - name: 格式化/修复项目
+      #   run: make format
+      - name: 运行 Go 静态检查
+        run: make check-go-vet
+      - name: 运行 Go lint 扫描
+        run: make check-go-lint
+      - name: 运行 Go fix 问题
+        run: make check-go-fix
+      - name: 运行 Go 单元测试
+        run: make check-go-test
+      - name: 运行 Go 依赖漏洞检查
+        run: make check-go-vuln

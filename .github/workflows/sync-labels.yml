@@ -1,0 +1,69 @@
+name: 同步依赖更新机器人标签
+on:
+  push:
+    branches: ['**']
+    paths:
+      - '.github/dependabot.yml'
+      - '.github/renovate.json5'
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v7
+      - name: 从 dependabot.yml / renovate.json5 自动创建标签
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          labels_file=$(mktemp)
+          trap 'rm -f "$labels_file"' EXIT
+
+          # Dependabot 标签（文件存在时）
+          if [ -f .github/dependabot.yml ]; then
+            yq -r '.updates[].labels[]?' .github/dependabot.yml >> "$labels_file"
+          fi
+
+          # Renovate 标签（文件存在时）：JSON5 有注释/尾逗号/裸 key，先转成标准 JSON 再提取
+          # 取顶层 labels 与 packageRules[].addLabels，与 Dependabot 标签合并后统一去重
+          # 裸 key 的正则必须兼容单行内联对象（如 {matchManagers: [...], addLabels: [...]}），
+          # 不能用 ^\s* 只匹配行首，否则内联 key 不会被加引号、JSON.parse 直接报错。
+          if [ -f .github/renovate.json5 ]; then
+            node -e 'const fs=require("fs");const s=fs.readFileSync(".github/renovate.json5","utf8").split("\n").filter(l=>!l.trim().startsWith("//")).join("\n").replace(/([{,]\s*)([A-Za-z_$][\w$]*)(\s*:)/g,"$1\"$2\"$3").replace(/,(\s*[}\]])/g,"$1");const c=JSON.parse(s);console.log([...(c.labels||[]),...(c.packageRules||[]).flatMap(r=>r.addLabels||[])].join("\n"))' >> "$labels_file"
+          fi
+
+          # 跨两个文件统一去重：同名标签（如 dependencies/go/frontend）只创建一次
+          labels=$(sed '/^[[:space:]]*$/d' "$labels_file" | sort -u)
+
+          echo "📋 发现以下标签（已去重）："
+          echo "$labels"
+
+          # 为每个标签自动生成颜色和描述
+          echo "$labels" | while IFS= read -r label; do
+            [ -z "$label" ] && continue
+
+            # 用 md5 哈希生成颜色（取前6位）
+            color=$(echo -n "$label" | md5sum | cut -c1-6)
+
+            # 确保颜色不会太浅（如果前两位是 ff/fe/fd，强制改为 darker）
+            if [[ "$color" =~ ^(ff|fe|fd) ]]; then
+              color="0${color:2:5}"
+            fi
+
+            desc="Auto-synced from dependabot.yml / renovate.json5"
+
+            # 创建或更新标签
+            gh label create "$label" \
+              --color "$color" \
+              --description "$desc" \
+              --force
+
+            echo "✅ 已创建/更新：$label (#$color)"
+          done
+
+          echo "🎉 所有标签同步完成！"
