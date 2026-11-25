@@ -19,8 +19,6 @@ concurrency:
   group: push-check-${{ github.ref }}
   cancel-in-progress: false
   queue: max
-env:
-  CI: 'true'
 jobs:
   check:
     runs-on: ubuntu-26.04
@@ -29,6 +27,16 @@ jobs:
     steps:
       - name: 检出代码
         uses: actions/checkout@v7
+      # 缓存同步下来的模板脚本；key 绑定仓库内脚本内容，脚本一改就换新缓存，
+      # 避免旧缓存把已跟踪脚本（如 resolve-prerelease.sh）恢复成旧版本。
+      - name: 缓存脚本
+        uses: actions/cache@v6
+        with:
+          path: scripts/ci
+          key: ci-scripts-${{ hashFiles('scripts/ci/**') }}
+      - name: 同步脚本
+        shell: bash
+        run: make fetch-scripts
       # 容器镜像已预装 Go 工具链（GOPATH=/go，工具在 /go/bin 且已在 PATH）。
       - name: 设置 Go 工具链目录
         shell: bash
