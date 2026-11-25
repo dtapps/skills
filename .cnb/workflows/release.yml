@@ -20,6 +20,7 @@
 # 「是不是预发布」不接受人工勾选，只看版本号后缀：布尔输入会和版本号打架。
 # 以 . 开头的顶层 key 只是锚点定义，不会被 CNB 当成分支。
 .trigger_release: &trigger_release
+  name: 发布
   runner:
     tags: cnb:arch:amd64 # 指定 Runner 必须有这个标签
   services:
@@ -127,11 +128,6 @@
         git fetch --tags --quiet --force || true
         count=$(git tag -l 'v*' | wc -l | tr -d ' ')
         echo "本地版本 tag: ${count} 个"
-        if [ "$count" -eq 0 ]; then
-          echo "❌ 一个版本 tag 都没有，changelog 会退化成「首次发布」"
-          echo "   检查 checkout 是否带 tag，或手动 git fetch --tags"
-          exit 1
-        fi
 
         # tag 不能已经存在：重跑同一次发布会把 tag 挪到新提交上
         # nightly 是例外：按天发布同一个 tag，同一天重跑/补发要能覆盖

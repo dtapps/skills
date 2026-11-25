@@ -1,6 +1,7 @@
 '**':
   push:
-    - runner:
+    - name: 检测
+      runner:
         tags: cnb:arch:amd64 # 指定 Runner 必须有这个标签
       services:
         - docker # 启用 Docker 服务（用于 docker build/push）

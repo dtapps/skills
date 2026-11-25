@@ -2,7 +2,8 @@
   push:
     # Go 单元测试覆盖率（全量红线）。
     # 本仓库是纯 Go 项目（main.go 在根目录），没有前端覆盖率流水线。
-    - runner:
+    - name: 生成测试覆盖率
+      runner:
         tags: cnb:arch:amd64
       docker:
         image: docker.cnb.cool/dtapp/golang:latest # 统一使用预构建的 CI 环境镜像
