@@ -1,8 +1,8 @@
-# master 分支的两种触发方式共用同一份流水线（YAML 锚点 .trigger_release）：
+# master 分支的三种触发方式共用同一份流水线（YAML 锚点 .trigger_release）：
+#   - crontab：每天北京时间 0 点定时构建 nightly
 #   - web_trigger_release：页面按钮手动触发，版本号由输入框给
 #   - api_trigger_release：Open API 触发（event=api_trigger_release），版本号从 env.version 传入
-# 定时 nightly 统一由 GitHub Actions 的 schedule 触发（.github/workflows/release.yml），
-# 这里不配置 crontab，避免两边同时发同一个日期的 tag。
+# GitHub Actions 的 nightly 定时任务按 UTC 00:00 执行（北京时间 08:00）。
 #
 # CNB 是本仓库的主平台（origin）：Release 一律从源码构建，产物与提交天然一致，
 # 不从其它平台搬产物（那会让同一个 tag 出现「两份产物」）。
@@ -30,6 +30,7 @@
     volumes:
       - /root/.cache/go-build:copy-on-write # Go 构建缓存 - 加速编译
       - /go/pkg/mod:copy-on-write # 仅缓存 Go 模块下载，避免覆盖镜像内预装的 /go/bin 工具
+      - ./scripts/ci:copy-on-write # 模板脚本缓存；卷会整体挂载该目录，同步前需先还原跟踪文件
   # 导入外部环境变量/配置。多文件必须用 YAML 数组（逗号分隔字符串不生效）；
   # 同名变量后面的覆盖前面的。npc.yml 提供 NPC_ENABLED，用于全局控制是否触发 NPC。
   imports:
@@ -49,15 +50,18 @@
   #   scripts/ci/resolve-prev-tag.sh 算出并落盘）。所以模板里**不要出现 | 和 &**：
   #   sed 用 | 当分隔符，& 在替换串里是特殊字符。
   env:
-    CI: 'true'
     ANNOUNCEMENT_COMMENT_TEXT: |-
       @{{REPOSLUG}}(发版日志助手) 请对比标签 {{PREVIOUSTAG}} 和 {{CURRENTTAG}} 的差异。
   stages:
+    - name: 同步脚本
+      script: |
+        # 卷会整体挂载 scripts/ci，先把本次提交里跟踪的脚本还原（未跟踪的模板脚本由缓存/下载提供）
+        git checkout -- scripts/ci
+        make fetch-scripts
     - name: 输出基本信息
       script: |
-        # web_trigger 从输入框、api_trigger 从 env.version 取版本号；留空兜底成 nightly，
+        # web_trigger 从输入框、api_trigger 从 env.version 取版本号；定时触发留空兜底成 nightly，
         # 由 resolve-prerelease.sh 展开成 <最近正式版+1补丁>-nightly.<UTC日期>。
-        # 定时 nightly 统一由 GitHub Actions 的 schedule 触发，不走 CNB。
         version="${version:-nightly}"
         echo "原始 version: $version"
         echo "原始 commit: ${commit:-（未填写）}"
@@ -273,30 +277,17 @@
         FILES: FILES
     - name: 输出 Release 附件
       script: echo $FILES
-    # 清理旧 nightly（与 GitHub release.yml 的「只保留最近 3 个」同口径）。
-    # 镜像侧每天被动同步一次，tag 各不相同，不清理就会无限堆积（Release + tag + 附件）；
-    # GitHub 侧删掉的旧 nightly也不会自动从 CNB 消失。
-    # 只处理日期 nightly（tag 以 -nightly.YYYYMMDD 结尾），rc / beta / alpha 与正式版一律不动。
-    # 删除逻辑统一在 scripts/ci/delete-release.sh（清理失败只告警，始终退出 0）。
+    # protect 保住正式版、latest/stable 与 rc/beta/alpha，避免 by_count 误删非 nightly 版本；
+    # dry_run 必须显式为 false，否则插件默认只列出待删除版本。
     - name: 清理旧 nightly（只保留最近 3 个）
-      script: |
-        set -eu
-        TAG="${INTERIOR_VERSION}"
-        case "${INTERIOR_PRERELEASE}:${TAG}" in
-          true:*-nightly.[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]) ;;
-          *) echo "非日期 nightly 发布（${TAG}），跳过清理"; exit 0 ;;
-        esac
-
-        if [ -z "${CNB_TOKEN:-}" ]; then
-          echo "ℹ️ 未配置 CNB_TOKEN，跳过 nightly 清理"
-          exit 0
-        fi
-        if [ -z "${CNB_API_ENDPOINT:-}" ] || [ -z "${CNB_REPO_SLUG:-}" ]; then
-          echo "ℹ️ CNB_API_ENDPOINT / CNB_REPO_SLUG 未注入，跳过清理"
-          exit 0
-        fi
-
-        sh scripts/ci/delete-release.sh --platform cnb --keep 3
+      image: docker.cnb.cool/dtapp/plugins/release-cleaner:latest
+      allowFailure: true
+      settings:
+        mode: by_count
+        keep: 3
+        protect: '^(v[0-9]+\.[0-9]+\.[0-9]+(-(rc|beta|alpha)[.-]?[0-9A-Za-z.-]*)?|latest|stable)$'
+        delete_git_tag: true
+        dry_run: false
     # 发布成功后同步开一条「发版公告」Issue。
     #
     # 为什么放在 CNB 侧：公告正文要引用 CNB 的 Release 下载链接，而 GitHub 侧发完版
@@ -572,6 +563,9 @@
           cat announcement-comment-result.txt 2>/dev/null || true
         fi
 master:
+  # 每天北京时间 0 点定时构建 nightly 预发布。
+  'crontab: 0 0 * * *':
+    - *trigger_release
   # 手动触发：通过页面自定义按钮执行（预发布看版本号后缀，页面不再有勾选框）
   web_trigger_release:
     - *trigger_release

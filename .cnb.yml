@@ -1,3 +1,4 @@
+# 本地工作流统一用顶层 YAML Anchor 定义作业，分支/事件通过 *锚点 引用。
 include:
   - .cnb/workflows/announcement-cleanup.yml
   - .cnb/workflows/pull-coverage.yml

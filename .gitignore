@@ -29,3 +29,8 @@ dtskills.rpm
 coverage.out
 go-test-report.xml
 coverage.xml
+
+# 同步
+/scripts/ci/delete-release.sh
+/scripts/ci/describe-artifact.sh
+/scripts/ci/render-ci-notice.sh
